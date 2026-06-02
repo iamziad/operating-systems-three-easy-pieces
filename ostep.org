@@ -1,0 +1,59 @@
+#+TITLE: Operating System: Three Easy Pieces Book
+#+AUTHOR: Ziad Ahmed
+#+DATE: Jun 02 2026
+:PROPERTIES:
+#+STARTUP:  content
+:END:
+
+\\
+
+* Introduction
+
+** Resource Management
+
+- الـOS بيسمح لبرامج كتير انها تشتغل في نفس الوقت (sharing CPU), بيسمح لبرامج كتير انها تقرأ من الmemory في نفس الوقت (sharing memory), وبيسمح لبرامج كتير انها تقرأ وتكتب علي الdisk في نفس الوقت.
+- اذا فهو بيدير الـresources بتاعت الجهاز.
+
+** Virtualization
+
+- الOS بياخد physical resources زي الـCPU, memory, disk وبيحولهم لـvirtual form من نفسهم, اقوي واسهل في الاستخدام.
+- الـOS ممكن نعتبره اكنه *virtual machine* مبنية فوق الـhardware.
+- طبعا عشان نقدر نستفيد من الـvirtual machine دي ونطلب منها اللي احنا عاوزينه, فا الـOS بيوفرلنا APIs بالحاجات اللي نقدر نطلبها منه, والـAPIs دي بيكون اسمها *system calls*.
+
+*** CPU Virtualization
+
+- الـOS بيوهم كل برنامج انه عنده CPU خاص بيه لوحده ومتاح طول الوقت عشان بينفذله الـinstructions بتاعته.
+- فالـOS بياخد الـCPU ويحوله لعدد لا متناهي من الـvirtual CPUs, ولكن في الحقيقة هو CPU واحد (او 4/6/8 حسب عدد الـcores) ولكن بيخدم او بيبدل علي كل البرامج (time sharing).
+
+*** Memory Visrtualization
+
+- الـOS بيعمل virtual address space لكل برنامج بيكون private مفيش برنامج تاني يقدر يقرأ منه او يكتب فيه, وبيوهم البرنامج انه واخد الـphysical memory كلها لوحده.
+- والـOS بيـmap الـvirtual address space ده لـphysical address حقيقية في الـmemory بمساعدة الpage tables.
+- والـmemory virtualization مش بس بيسمح للبرامج انها تتشارك في الmemory, لا ده كمان بيخلي الmemory اسهل في الاستخدام, البرنامج بيطلب الـmemory من الـOS من غير ما يشغل باله هل في مساحة فاضية ولا لا؟ ازاي احمي الdata بتاعتي من البرامج التانية, الخ...
+
+  - هنا هنلاحظ ان الـchild والـparent عندهم نفس الـvirtual address ولكن بتـMap لـphysical adresses مختلفة.
+
+#+begin_src c
+int var = 5;
+
+  // Child
+if (fork() == 0) {
+    var = 10;
+}
+  // parent
+printf("var: %d", var); // 5
+#+end_src
+
+** Concurrency
+
+*** Atomicity:
+
+- تنفيذ عدة instruction دفعة واحدة بدون ما توقف (pause) او مقاطعة (interrupt).
+
+** Persistence
+
+*** File system
+
+- الـfile system هو software بيعمل abstraction للـdisk, وبينظم تخزين الملفات علي الdisk.
+- الـabstraction هنا مش معناه ان كل برنامج ليه virtual disk خاص بيه, بالعكس احنا عاوزين الملفات تكون مشتركة بين البرامج, يعني مثلا ممكن نعمل ملف فيه C code, ونفس الملف ده هيعدي علي الtext editor ثم الcompiler ثم الOS هينفذه.
+ ولكن الabstraction هنا معناه ان البرنامج ممكن يقرأ ويكتب علي الdisk بدون ما يشغل باله , هل في مساحة فاضية؟ ايه نوع الdisk ده؟ ازاي اتكلم معاه؟, الخ...
