@@ -19,7 +19,7 @@ here for simplicity), has a single parent. Thus, all processes are
 related in a tree, rooted at the initial process. We will call this
 tree the `Process Tree` and understanding what it looks like as
 processes are created and destroyed is the point of this simple
-homework. 
+homework.
 
 # Simple Example
 
@@ -128,7 +128,7 @@ the `-f` flag.
 You can specify specific fork and exit sequences with the `-A`
 flag. For example, to have `a` fork `b`, `b` then fork `c`; `c`
 exit, and finally, `a` fork `d`, just type (we show `-c` here to solve
-the problem, too): 
+the problem, too):
 
 ```sh
 prompt> ./fork.py -A a+b,b+c,c-,a+d -c
@@ -156,4 +156,4 @@ You can only show the final output (and see if you can guess all the
 intermediates to get there) with the `-F` flag.
 
 Finally, you can change the printing style of the tree with the `-P`
-flag. 
+flag.
