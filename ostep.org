@@ -1,4 +1,3 @@
-
 #+TITLE: Operating System: Three Easy Pieces Book
 #+AUTHOR: Ziad Ahmed
 #+DATE: Jun 02 2026
