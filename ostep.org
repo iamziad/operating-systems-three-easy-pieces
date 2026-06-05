@@ -9,6 +9,7 @@
 \\
 
 * Introduction
+
 ** Resource Management
 
 - الـOS بيسمح لبرامج كتير انها تشتغل في نفس الوقت (sharing CPU), بيسمح لبرامج كتير انها تقرأ من الmemory في نفس الوقت (sharing memory), وبيسمح لبرامج كتير انها تقرأ وتكتب علي الdisk في نفس الوقت.
@@ -59,9 +60,10 @@ printf("var: %d", var); // 5
   ولكن الabstraction هنا معناه ان البرنامج ممكن يقرأ ويكتب علي الdisk بدون ما يشغل باله , هل في مساحة فاضية؟ ايه نوع الdisk ده؟ ازاي اتكلم معاه؟, الخ...
 
 
-* The Process
+* Virtualization
 
-** Abstraction
+** The Process
+*** What is the Process?
 
 - الـprogram هو مجرد ملف فيه مجموعة من الـinstructions والـstatic data متخزنين علي الـdisk.
 - الـprocess هي الـprogram لما يشتغل والـinstructions بتاعته تبدا تتنفذ. وهي اساس الـ *isolation* في الـOS
@@ -72,7 +74,7 @@ printf("var: %d", var); // 5
 - الـOS بيشغل اكتر من process في نفس الوقت, والـprocess بتوفرلنا مفهوم الـsoftware threads اللي بتعمل مسارات تنفيذ متعددة داخل نفس الـprocess
 - اذا الـprocess هي اساس الـ *virtualization* و *conurrency* في الـOS.
 
-** Process API
+*** Process API
 
 - الـOS بيوفر APIs كتير جدا لكل المميزات اللي هو بيوفرها.
 - من اهم الـAPIs اللي لازم تكون متوفرة
@@ -81,7 +83,7 @@ printf("var: %d", var); // 5
   - waiting
   - process status
 
-** Process Creation
+*** Process Creation
 :PROPERTIES:
 :ID:       4c6db0cc-bb93-4848-8aa2-5db3975f3873
 :END:
@@ -91,7 +93,7 @@ printf("var: %d", var); // 5
 
 الـprogram بيبقي متخزن علي الـdisk في شكل قابل للتنفيذ (executable format), الـOS بيقرأ الـexecutable ده ويعمل load للـinsturctions والـdata اللي فيه علي الـmemory في الـaddress space الخاص بالـprocess.
 
-** Process States
+*** Process States
 :PROPERTIES:
 :ID:       80392b68-62b9-473f-a1aa-343aa381655d
 :END:
@@ -111,8 +113,10 @@ printf("var: %d", var); // 5
 
 #+DOWNLOADED: screenshot @ 2026-06-02 18:28:00
 [[file:images/2026-06-02_18-28-00_screenshot.png]]
-** Introduction to UNIX System Calls
-*** fork()
+
+*** Introduction to UNIX System Calls
+**** fork()
+
 - when we call fork() it will clone the address space of the *parent*, and
   create new process called *child*.
 - the parent and child has the same virtual address space but it maps to
@@ -140,7 +144,8 @@ int main() {
     return 0;
 }
 #+END_SRC
-*** exec()
+**** exec()
+
 - the exec() function overrites the address space of the current process with
   the data and instruction of the new executable
 - it doesn't return to main() function again, unless an error occurred.
@@ -161,8 +166,8 @@ int main() {
 
 #+RESULTS:
 : hello
-** Pipes & Redirects
-*** The low-level idea behind them
+**** Pipes & Redirects
+**** The low-level idea behind them
 
 - لما بنفتح ملف باستخدام =open()= بيتعمل حاجتين:
   1. في الmemory space بتاعت الprocess بيتعمل FD Table.
@@ -217,13 +222,13 @@ int fd5 = dup(fd3);
 #+END_SRC
 
 -----
-*** Another important info
+**** Another important info
 
 - الfd الجديد ديما بياخد *اصغر* رقم متاح
 - اغلب الposix/unix utilies مصممة انها تقرأ من الstdin لو ما اتبعتلهاش argument محددة
 
 -----
-*** Redirects
+**** Redirects
 
 لما في الshell بتعمل =cat < input.txt=
 
@@ -243,7 +248,7 @@ if (fork() == 0) {
 #+END_SRC
 
 -----
-*** dup()
+**** dup()
 
 - الdup() بترجع fd جديد بيشاور علي نفس الopen file description اللي بيشاور عليه الfd القديم, فا كدا بقا عندنا 2 fd بيشاورا علي نفس الobject في الkernel, يعني الref count بتاع الobject ده بيقا 2
 
@@ -254,7 +259,7 @@ int savestdin = dup(0); // cloned the open file desc of stdin in a new fd
 #+end_src
 
 -----
-*** dup2()
+**** dup2()
 
 - الdup2() تختلف عن dup() في حاجات بسيطة ولكنها مهمة
 - *اولا* بدل مكان الkernel هو اللي بيحدد الfd الجديد زي في dup(), لا, احنا اللي بنحدد الfd الجديد اللي هيتشارك مع الfd القديم في نفس الofd
@@ -274,7 +279,7 @@ dup2(savestdin, 0); // clone 'savestdin' to stdin
 
 
 -----
-*** Thread-safe Redirection
+**** Thread-safe Redirection
 
 - مثال علي thread unsafe redirection
   1. بنقفل الstdin عشان نستخدم الfd 0 للملف بتاعنا
@@ -301,7 +306,7 @@ if (fork() == 0) {
 
 
 -----
-*** Pipes (Anonymous Pipe)
+**** Pipes (Anonymous Pipe)
 
 الpipe هي ماسورة نقل بيانات بين الprocesses او i/o byte stream , بتنقل البيانات في خط احادي (unidirectional).
 
@@ -428,8 +433,8 @@ int main() {
     return 0;
 }
 #+end_src
-** Process Waiting
-*** wait()
+*** Process Waiting
+**** wait()
 
 - الـ =wait()= بتخلي الـparent يستني اقرب child process هتخلص.
 - الـ =wait()= مصممة انها تشتغل من الاعلي للاسفل (top down) في الـ *process tree*, فا مينفعش الـchild يستني الـparent.
@@ -462,7 +467,7 @@ int main(int argc, char *argv[])
     return 0;
 }
 #+end_src
-*** waitpid()
+**** waitpid()
 
 الـ =waitpid(pid, &status, options)= بتدينا تحكم اكبر من =wait= , بالذات لو عندك اكتر من child process.
 
@@ -479,7 +484,7 @@ int main(int argc, char *argv[])
    - لو =WNOHANG= الـparent مش هيقف لو الـchild لسه مخلصش, وهترجع 0, او الـpid بتاع الـchild لو خلص (non-blocking).
    - لو =WNOTRACING= لو الـchild اتوقف مؤقتا بـC-z او اي signal تانية, الـparent هيكمل شغل ومش هيستناه (non-blocking).
 
-*** wait & waitpid status
+**** wait & waitpid status
 
 الـstatus بتاعت الـchild بتبقي متخزنة bitwise, يعني مثلا الـexit code بيبقي متخزن في *ثاني* byte في الـstatus integer, فا قراءة الـstatus بتبقي صعبة, لكن في *macros* بتساعدنا نقرأ الـstatus بشكل سهل.
 
@@ -493,3 +498,137 @@ WTERMSIG(status)       // what is the signal number? (if WIFSIGNALED(status) == 
 WIFSTOPPED(status)     // is it stopped?
 WSTOPSIG(status)       // which signal stopped it?
 #+end_src
+
+** Direct Execution
+*** The Problem
+
+- عشان الـOS يحقق الـvirtualization لازم ببساطة جدا يقسم الـ *physical CPU* بين كل الـprocesses اللي شغالة.
+- عشان يعمل الكلام ده ببساطة جدا هيشغل كل process شوية صغيرين بعد كدا يوقفها وينقل علي process تانية وهكذا... (time sharing)
+
+- ولكن عشان نحقق مفهوم الـvirtualization بشكل سليم, هيقابلنا تحديين:
+  - ازاي نعمل الكلام ده بشكل سريع بدون ما نحط overhead كبير علي النظام (performance challenge).
+    - مش عاوزين الـOS يبقي بطئ ولا ياخد وقت كبير في التبديل بين الـprocesses.
+  - ازاي في نفس الوقت الـOS يبقي عنده تحكم كامل علي كل الـprocesses اللي شغالة (control challenge).
+    - مش عاوزين كل process تفضل شغالة للابد او تعمل حاجة مش المفروض تعملها.
+
+*** The Solution
+
+عشان نحل المشكلتين دول هنستخدم *mechanism* اسمه الـ *limited direct execution*.
+
+**** Limited Direct Execution
+
+الـ mechanism ده بينقسم لجزئين:
+
+**** Direct Execution
+
+- عشان نحقق سرعة في الاداء, هنخلي البرامج تشتغل بشكل native / مباشر علي الـCPU, فا مثلا لما الـOS يقرر يشغل برنامج:
+  - يعمل entry ليه في الـprocess list.
+  - يخصصله memory.
+  - يعمل load ليه علي الـmemory, (يعمل load للـstack, heap,code, etc..).
+  - يعمل jump علي الـentry point, زي (main()) ويبدأ ينفذ البرنامج.
+  - يرجع الـoutput.
+- وكل ده بيشتغل بطريقة سريعة ومباشرة, ولكن مازال عندنا مشكلة في التحكم:
+  - ازاي نوقف الـprocess (pause - resume)؟
+  - ازاي نمنع اي process انها تعمل حاجة مش المفروض تعملها؟
+  - ازاي نخلي الـprocess متشتغلش للأبد؟
+  - ازاي نخليها متدخلش علي memory مش بتاعتها؟
+- ازاي نخلي الـprocess تعمل privelged opertations زي I/O او memory allocation, ولكن تحت اشراف الـOS؟
+
+**** Limititations
+
+***** User mode
+
+الـprocess في الـuser mode مينفعش تنفذ اي *privileged operations* زي انها تعمل I/O request او تحجز memory زيادة, لو اي process حاولت تعمل اي حاجة زي كدا الـCPU هيحول التحكم للـkernel وهو هيكتشف الخطأ وهيقفل الـprocess دي.
+
+***** Kernel mode
+
+ده الـmode اللي بيشتغل فيه الـkernel, ويقدر ينفذ اي حاجة هو عاوزها بدون قيود.
+
+***** System calls
+
+ازاي نخلي اي process تستفيد من بعض مميزات الـkernel mode ولكن تحت اشراف الـkernel؟
+
+الـsystem call وظيفتها تحول الـCPU من الـuser mode للـkernel mode عشان ينفذ privileged insturctions.
+- اّلية العمل:
+  - الـsystem call نفسها هي عبارة عن assembly instruction بتعرف الـkernel نوع الـservice اللي احنا عاوزينها, ولكن الـinstruction دي بتبقا abstracted بـlibrary wrapper (glibc for example) بيسهل علينا استخدام الـsystem call.
+  - الـwrapper بيحط الـsystem call arguments في مناطق معينة في الـstack او في registers معينة (غالبا بتتحط في registers),بيتفق عليها glibc والـkernel.
+  - بعد كدا بيحط الـ *syscall number* برضو في register معين.
+  - بعد كدا بينادي علي الـ *hardware-specific trap instruction* اللي بتحول من الـuser mode للـkernel mode زي *syscall* في x86 او *ecall* في RISC-V.
+  - الـkernel بيتولي زمام الامور من النقطة دي وبيحفظ حالة user mode process في الـkernel stack زي:
+    - قيم الـregisters.
+    - program counter (PC)
+    - stack pointer
+- عشان لما يرجع, يرجع عند نفس النقطة (return from trap)
+- وبرضو الـwrapper بيوفر سهولة في error handling لو حصل مشاكل لان الـkernel عادة بيرجع errors مبتكونش human readable.
+
+#+begin_example
+Your Program
+     |
+     |  Procedure Call
+     v
+glibc read()
+     |
+     |  System Call
+     v
+Kernel sys_read()
+     |
+     v
+Kernel returns
+     |
+     v
+glibc read()
+     |
+     v
+Your Program
+#+end_example
+
+**** Trap
+
+الـtrap insturction بتدخل الـkernel من entry معينة الـkernel هو اللي بيحددها, عشان يحمي نفسه من الـmalicious processes.
+
+***** Trap Table
+
+طب ازاي هيعرف الـaddress او الـentry point اللي محددها الـkernel؟
+مثال:
+- مثلا لو المستخدم نفذ system call زي دا, فالـwrapper هيعمل شوية حاجات وبعد كدا في الاخر هينادي علي الـtrap instruction زي *syscall*
+- هنا الـCPU عرف انه محتاج يدخل للـkernel mode, بس هيدخل منين؟ الـkernel فيه ملايين السطور من الكود!
+
+#+begin_src c
+read(fd, buf, 100);
+    |
+    v
+ syscall
+#+end_src
+
+ هنا يجي دور الـ *trap table*, هي table الي kernel بيعملها اثناء الـboot في الاول خالص وبيعرف الـCPU عنوانها. بيكون فيها *trap numbers* وكل رقم من دول بيـMap لعنوان *handler* معين هيتنفذ لما يحصل حدث معين, الحدث ده ممكن يبقي:
+ - System call
+ - Interrupt
+   * keyboard
+   * mouse
+   * disk
+   * timer
+ - Exception
+   * divide by zero
+   * page fault
+   * bad instruction
+
+- مثال تخيلي علي الـtrap table
+- كلمة handler معناها كود بيتنفذ لما يحصل حدث معين.
+
+  #+begin_example
+Trap Number     Handler Address
+--------------------------------
+0               divide_by_zero_handler
+13              protection_fault_handler
+14              page_fault_handler
+32              timer_interrupt_handler
+80              system_call_handler
+  #+end_example
+
+***** More about security - user input
+
+الـtrap tables بتحمي الـkernel mode, عن طريق انها بتعمل *hardware trapping mechanism* بيخلينا نحول من الـuser mode للـkernel mode بطريقة امنة, الا ان ده مش بيضمن الامان المطلق, لسه في حاجات كتير الـkernel لازم ياخد باله منها بخصوص الحماية, زي الـuser input, لازم الـ *system call handler* يفحص الـuser arguments كويس جدا, قبل ما يروح يكلم الـhardware, لان الـuser ممكن يكون باعت malicious input او addresses. فالـkernel بيتعامل مع الـuser input بحذر شديد.
+
+***** return-from-trap instruction
+
+الـ *return-form-trap* هي instruction بترجع للـ calling process وبتعمل pop للقيم بتاعت الregisters من الkernel stack وبتخفض الـprivilege للـuser mode وتكمل تنفيذ الuser process من اخر نقطة.
