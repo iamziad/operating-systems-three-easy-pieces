@@ -632,3 +632,36 @@ Trap Number     Handler Address
 ***** return-from-trap instruction
 
 الـ *return-form-trap* هي instruction بترجع للـ calling process وبتعمل pop للقيم بتاعت الregisters من الkernel stack وبتخفض الـprivilege للـuser mode وتكمل تنفيذ الuser process من اخر نقطة.
+
+***** Trap frame
+
+الـtrap frame هو حالة الـuser process اللي الـCPU هيرجعلها بعد كدا لما يرجع للـuser mode, لما بننادي علي الـtrap instruction الـtrap handler بيحفظ snapshot لحالة الuser process قبل ما ينادي الـsyscall handler الفعلي. والـsnapshot ده بيبقي اسمه الـ *trap frame* وبيتخزن في الـkernel stack.
+
+**** Switching between processes - Timer
+
+***** The  Problem
+
+الـcpu virtualization قائم علي فكرة التبديل بين الـprocesses, ولكن ازاي هنعمل الكلام ده؟ الفكرة تبان بسيطة ولكن هي في الحقيقة tricky شوية.
+
+لما الـprocess بتشتغل بيبقي الـcpu مشغول معاها والـos ميقدرش يستعيد زمام الامور تاني (regain control), لان ازاي الـos هيستعيد زمام الامور وهو مش شغال اصلا؟ الـcpu مشغول مع process تانية.
+
+***** The Old Solution - Cooperative approach
+
+الطريقة الوحيدة للـos انه يرجع زمام الامور من تاني بعد ما كان الـcpu مشغول مع process تانية, هي ان الـprocess دي تعمل *exception* او *interruption* او تنادي *system call*, وساعتها الـcpu بيحول من الـuser mode للـkernel mode وبيرجع زمام الامور للـos تاني.
+
+زمان كان الحل للموضوع ده هي ان الـos كان بيثق في الـprocess اللي شغالة انها هتعمل interruption او exception بحيث الـcpu يحول من الـuser mode للـkernel mode, ولكن الحل ده كان كويس زمان لما كان نفس الـvendor اللي بيبيع الـhardware هو نفسه بيديك معاه operating system وهو نفسه اللي بيديك software عشان يشتغل داخل الـos ده, فكان الـos والـsoftwares بتشتغل بشكل متعاون مع بعضها لان الـos كان بيقدر يتوقع سلوك الـsoftwares دي.
+
+ولكن دلوقتي ومع وجود الـthird-party software, الطريقة دي بقت غير مناسبة تماما, لان الـos مبقاش يقدر يثق في البرنامج اللي شغال.
+ممكن البرنامج ده ميستخدمش اي system calls خالص, او يعمل اي exception او interruptions, او ممكن يخش في infinite loop ويفضل شغال للابد, فا ساعتها الـcpu هيفضل مشغول مع الـprocess علي طول والـos مش هيعرف يرجع التحكم علي النظام تاني, وكان لو برنامج هنج بيهنج الـos معاه ومفيش طريقة الـos يتعافي منها غير اننا نعمل reboot للـsystem.
+
+***** The Real Solution - Non-Cooperative approach - Timer
+
+ولكن الحل العبقري للحوار ده هو ان الـos يستعين بالـhardware, فا اتعمل الـ *timer*.
+
+الـtimer هو physical device بيعد كل كام milisecond ويبعت timer interrupt للـcpu يخليه يحول من الـuser mode للـkernel mode بشكل اجباري, وساعتها الـos بيستعيد زمام الامور وممكن بعد كدا يوقف الـprocess دي ويكمل تنفيذ process تانية او يشغل process جديدة او يعمل اللي هو عاوزه حسب الـpolicies اللي ماشي عليها.
+
+**** Context Switching
+
+بمجرد ما الـos استعاد زمام الامور من تاني, سواء بطريقة cooperative عن طريق system call او بطريقة non-cooperative عن طريق timer interrupt, فالمهم انه لازم ياخد قرار معين, والجزء المسؤل عن اتخاذ القرار هو الـ *Scheduler* وبيشتغل بـpolicies معينة
+
+ولكن لو كان القرار هو التبديل للـprocess فا التبديل ده اسمه الـ *context switch*, وهو ببساطة جدا ان الـos بيعمل push للـexecution context بتاع الـprocess الحالية علي kernel stack ويعمل pop للـexecution context بتاع الـprocess اللي هنبدل ليها (soon to be executed) من الـkernel stack, بحيث ان الـcpu يبقا عارف هو رايح فين وراجع فين.
