@@ -1,0 +1,97 @@
+
+* Problem =scheduler.py -p FIFO -j 3 -s 100=
+
+- Turnaround time:
+  - j_0 = 2s
+  - j_1 = 7s
+  - j_2 = 15s
+  - Avg turnaround time = $$\frac{2 + 7 + 15}{3} = 8s$$
+
+- Wait time:
+  - j_0 = 0s
+  - j_1 = 2s
+  - j_2 = 7s
+  - Avg turnaround time = $$\frac{0 + 2 + 7}{3} = 3s$$
+
+- Response time:
+  - j_0 = 0s
+  - j_1 = 2s
+  - j_2 = 7s
+  - Avg turnaround time = $$\frac{0 + 2 + 7}{3} = 3s$$
+
+* Problem =scheduler.py -p SJF -l 5,10,15=
+
+[ time 0 ] run jop_1 for 5s  - DONE at 5s
+[ time 1 ] run jop_2 for 10s - DONE at 15s
+[ time 2 ] run jop_3 for 15s - DONE at 30s
+
+- Jop_0: Turnarround: 5s,  Wait: 0s,  Response: 0s
+- Jop_1: Turnarround: 15s, Wait: 5s,  Response: 5s
+- Jop_2: Turnarround: 30s, Wait: 15s, Response: 15s
+
+Average: Turnaround: 16.67s, Wait: 6.67s, Response: 6.67s
+
+* Question 1:
+
+Compute the response time and turnaround time when running
+three jobs of length 200 with the SJF and FIFO schedulers
+
+** Solution FIFO
+
+- Turnaround time:
+  - j_0 = 200s
+  - j_1 = 400s
+  - j_2 = 600s
+  - Avg turnaround time = $$\frac{200 + 400 + 600}{3} = 400s$$
+
+- Wait time:
+  - j_0 = 0s
+  - j_1 = 200s
+  - j_2 = 400s
+  - Avg wait time = $$\frac{0 + 200 + 400}{3} = 200s$$
+
+- Response time:
+  - j_0 = 0s
+  - j_1 = 200s
+  - j_2 = 400s
+  - Avg wait time = $$\frac{0 + 200 + 400}{3} = 200s$$
+
+** Solution SJF
+
+- Turnaround time:
+  - j_0 = 200s
+  - j_1 = 400s
+  - j_2 = 600s
+  - Avg = $$\frac{200 + 400 + 600}{3} = 400s$$
+
+- Wait time:
+  - j_0 = 0s
+  - j_1 = 200s
+  - j_2 = 400s
+  - Avg = $$\frac{0 + 200 + 400}{3} = 200s$$
+
+- Response time
+  - j_0 = 0s
+  - j_1 = 200s
+  - j_2 = 400s
+  - Avg = $$\frac{0 + 200 + 400}{3} = 200s$$
+
+* Question 2:
+
+- Turnarround time:
+  - j_0 = 100s
+  - j_1 = 300s
+  - j_2 = 600s
+  - Avg = $$\frac{100 + 300 + 600}{3} = 333.33s$$
+
+- Wait time:
+  - j_0 = 0s
+  - j_1 = 100s
+  - j_2 = 300s
+  - Avg = $$\frac{0 + 100 + 300}{3} = 133.33s$$
+
+- Response time:
+  - j_0 = 0s
+  - j_1 = 100s
+  - j_2 = 300s
+  - Avg = $$\frac{0 + 100 + 300}{3} = 133.33s$$

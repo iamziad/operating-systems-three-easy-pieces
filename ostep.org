@@ -664,3 +664,147 @@ Trap Number     Handler Address
 بمجرد ما الـos استعاد زمام الامور من تاني, سواء بطريقة cooperative عن طريق system call او بطريقة non-cooperative عن طريق timer interrupt, فالمهم انه لازم ياخد قرار معين, والجزء المسؤل عن اتخاذ القرار هو الـ *Scheduler* وبيشتغل بـpolicies معينة
 
 ولكن لو كان القرار هو التبديل للـprocess فا التبديل ده اسمه الـ *context switch*, وهو ببساطة جدا ان الـos بيعمل push للـexecution context بتاع الـprocess الحالية علي kernel stack ويعمل pop للـexecution context بتاع الـprocess اللي هنبدل ليها (soon to be executed) من الـkernel stack, بحيث ان الـcpu يبقا عارف هو رايح فين وراجع فين.
+
+** CPU Scheduiling
+
+*** Workload Assumptions
+
+عشان نعمل scheduling policy, لازم نحط assumptions, وواحدة من الـassumptions دي هي الـworkload assumptions.
+الـworkload هو جزء اساسي في بناء اي scheduling policy, وكل ما نسحب الـworkload بشكل ادق كا ما الـpolicy تكون مظبوطة اكتر.
+
+امثلة علي الـworkload assumptions, زي:
+
+- هل الـjobs هتاخد نفس الوقت في التنفيذ ولا لا؟
+- هل الـjobs كلها هتوصل النظام في نفس الوقت؟
+- هل وقت تنفيذ كل job معروف؟ (runtime)
+- هل الـjobs هتعمل IO requests ولا هتستخدم الـCPU فقط؟
+
+  والـscheduling algroithm بياخد قرار علي الافتراضات دي.
+
+*** Scheduling Metrics
+
+عشان نعرف نقارن بين الـscheduling algorithms محتاجين metric نقيس بيها اداء كل الجوريزم.
+
+امثلة علي الـscheduling metrics:
+
+**** Turnaround time
+
+الـturnaround time هو الـexecution time + waiting time.
+او الـcompletion time - arrival time.
+
+الـarrival time هو الوقت اللي البرنامج وصل فيه للنظام واتحول لـprocess/jop.
+
+***** FIFO
+:PROPERTIES:
+:ID:       b95a02dc-b2b5-43e9-bb35-a7b57aa03214
+:END:
+
+ده الجوريزم بسيط جدا بيعتمد علي نظام الطابور, يعني الـjop اللي هتوصل الاول هي اللي هتتنفذ الاول.
+
+لو اعتبرنا ان احنا عندنا 3 jops وكلهم وصلوا مع بعض وكلهم عندهم نفس الـruntime
+فا هنا الـaverage turnaround time هيكون:
+
+$$\frac{10+20+30}{3} = 20$$s
+
+#+DOWNLOADED: screenshot @ 2026-06-11 21:08:43
+[[file:images/2026-06-11_21-08-43_screenshot.png]]
+
+الالجوريزم ده كويس طول ما كل الـjops بتاخد نفس الـrun time او حتي متقاربة في الوقت.
+لكن لو الفرق كبير بين الـjops, فالاداء هيكون وحش جداً, مثال:
+
+هنا كلهم وصلوا في نفس الوقت, ولكن A خدت وقت كبير جدا 100 ثانية عشان تتنفذ و B,C فضلوا مستنينها كتير جدا في حين انهم لو كانوا بدأو هما الاول كان خلصوا من بدري.
+يعني اكنك في super market واستنيت واحد قدامك محمل عربية كاملة لحد ما يخلص, في حين ان نت بس عاوز تشتري زجاجة مياه.
+
+الـaverage turnaround time =
+
+$$\frac{100 + 110 + 120}{3} = 110$$ وده وقت كبير جدا كا متوسط.
+
+#+DOWNLOADED: screenshot @ 2026-06-11 22:02:13
+[[file:images/2026-06-11_22-02-13_screenshot.png]]
+
+***** SJF - shortest jop first
+:PROPERTIES:
+:ID:       eed18769-7c0d-4463-9572-9e75bf2281b6
+:END:
+
+ده الجوريزم بيحل مشكلة FIFO, عن طريق انه بينفذ الـjops الاقصر الاول.
+
+$$\frac{10 + 20 + 120}{3} = 50 $$ وده افضل بكتير من FIFO.
+
+#+DOWNLOADED: screenshot @ 2026-06-12 02:26:11
+[[file:images/2026-06-12_02-26-11_screenshot.png]]
+
+
+ولكن افتراض ان كل الـjops وصلت في نفس الوقت, ده افتراض خيالي مش بيحصل في الحقيقة, وممكن نرجع لنفس المشكلة الاولانية تاني.
+هنا A وصلت عند 0, B و C وصلوا عند 10, والاتنين هيفضلوا مستنين A كتير جدا لحد ما تخلص.
+
+$$\frac{100 + 100 + 110}{3} = 103.33$$
+
+#+DOWNLOADED: screenshot @ 2026-06-12 03:04:51
+[[file:images/2026-06-12_03-04-51_screenshot.png]]
+
+***** STCF Shortest time-to-completion first | PSJF Preemptive shortest jop first
+:PROPERTIES:
+:ID:       1a1b57b5-cff0-4ff7-a64b-b1e76b7c5093
+:END:
+
+الالجورزم ده اذكي لانه عنده القابيلة انه يوقف الـjop اللي شغال عليها ويروح ينفذ jop ثانية هتاخد وقت اقصر
+
+$$\frac{10 + 20 + 120}{3} = 50$$
+
+#+DOWNLOADED: screenshot @ 2026-06-12 03:16:18
+[[file:images/2026-06-12_03-16-18_screenshot.png]]
+
+**** Response time:
+:PROPERTIES:
+:ID:       8fa402c9-9e69-474c-928d-18ae5d797edc
+:END:
+
+كل الخوراوميات اللي فاتت دي كانت بتهتم بالـturnaround time او يعني الـjop دي هتاخد وقت اد ايه لحد ما تخلص؟ ولكن ده كان كويس جدا زمان في الـOSes اللي كانت بتشتغل بنظام الـbatching
+
+لكن اتضح مع كونسبت الـtime sharing, ان الوقت اللي الـjop هتتنفذ فيه لاول مرة (response time) اهم من الوقت الكلي اللي هتاخده لحد ما تخلص (turaround time)
+
+*Trunaround time* = $$Tcompletion - Tarrival$$
+
+*Response Time*   = $$Tfirstrun - Tarrival$$
+
+
+
+#+DOWNLOADED: screenshot @ 2026-06-12 06:30:15
+[[file:images/2026-06-12_06-30-15_screenshot.png]]
+
+تخيل ان =C= هي REPL او shell او اي interactive program, فا كدا الـuser بعد ما دخل الـinput وداس enter, استنا 15 ثانية كاملين عقبال ما البرنامج يرجعله output.
+
+فا اه الوقت اللي البرامج بتخلص فيه بقا اسرع لكن الوقت اللي بتبدأ فيه ما زال بطئ
+
+احنا عاوزين مثلا اول ما ندخل input للـshell وندوس enter, يرد علينا في لحظتها والا البرنامج مبقاش interactive خالص, فالـresponse time مهم جدا حتي لو البرنامج في الاخر هيخلص ابطئ حاجة بسيطة.
+
+***** Round Robin
+:PROPERTIES:
+:ID:       24897458-b534-4def-afa5-22b5c0d5d6b5
+:END:
+
+الـround robin بيهتم بالـresponse time, وكدا النظام بقا اكثر تفاعليه حتي لو كل jop هتاخد وقت اكتر شوية لحد ما تخلص, بسبب ان في context switching كتير بيحصل وده بيجي شوية علي حساب الـturnaround time
+
+ولكن الـScheduler مش وظيفته يكون مثالي, وهو وظيفته يكون متوازن.
+
+#+DOWNLOADED: screenshot @ 2026-06-12 06:30:35
+[[file:images/2026-06-12_06-30-35_screenshot.png]]
+
+كل ما قل الـtime slice كل ما الـresponse time هيقل وده يبان كويس ولكن عدد الـcontext switches هيزيد جامد وبالتالي الـturnaround time هيزيد, وده هيحط overhead كبير جدا علي الاداء العام, لان الـcontext switching عملية مكلفة.
+
+فا لازم الـtime slice يكون اقل ما يمكن بحيث الـresponse time يكون سريع ولكن في نفس الوقت ميجيش جامد علي حساب الـturnaround time ويزود عدد الـcontext switches اللي بيحصل.
+
+**** Incorporating I/O
+:PROPERTIES:
+:ID:       6fd340e7-6e81-428e-8c51-0c624febcb6f
+:END:
+
+لو عندنا 2 jops كل واحدة فيهم محتاجة 50ms من وقت الـCPU, ولكن الـjop A بتعمل I/O request كل 10ms.
+
+لو الـscheduler في الحالة دي STCF, فا لو A هي اللي وصلت الاول, B هيفضل مستنيها كتير جدا لان الـSTCF مش بيعمل context switching.
+
+لكن لو الـscheduler شغال بـRR, فا هيعتبر ان الـ10ms I/O دي jop جديدة منفصلة وهيعمل overlap بين وقت الـCPU و وقت الـDisk بحيث نستفيد من الموارد اقصي استفادة ممكنة.
+
+#+DOWNLOADED: screenshot @ 2026-06-12 21:24:02
+[[file:images/2026-06-12_21-24-02_screenshot.png]]
