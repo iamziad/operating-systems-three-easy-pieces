@@ -9,11 +9,6 @@
 
 * Introduction
 
-** Resource Management
-
-- الـOS بيسمح لبرامج كتير انها تشتغل في نفس الوقت (sharing CPU), بيسمح لبرامج كتير انها تقرأ من الmemory في نفس الوقت (sharing memory), وبيسمح لبرامج كتير انها تقرأ وتكتب علي الdisk في نفس الوقت.
-- اذا فهو بيدير الـresources بتاعت الجهاز.
-
 ** Virtualization
 
 - الOS بياخد physical resources زي الـCPU, memory, disk وبيحولهم لـvirtual form من نفسهم, اقوي واسهل في الاستخدام.
@@ -25,7 +20,7 @@
 - الـOS بيوهم كل برنامج انه عنده CPU خاص بيه لوحده ومتاح طول الوقت عشان بينفذله الـinstructions بتاعته.
 - فالـOS بياخد الـCPU ويحوله لعدد لا متناهي من الـvirtual CPUs, ولكن في الحقيقة هو CPU واحد (او 4/6/8 حسب عدد الـcores) ولكن بيخدم او بيبدل علي كل البرامج (time sharing).
 
-*** Memory Visrtualization
+*** Memory Virtualization
 
 - الـOS بيعمل virtual address space لكل برنامج بيكون private مفيش برنامج تاني يقدر يقرأ منه او يكتب فيه, وبيوهم البرنامج انه واخد الـphysical memory كلها لوحده.
 - والـOS بيـmap الـvirtual address space ده لـphysical address حقيقية في الـmemory بمساعدة الpage tables.
@@ -808,3 +803,157 @@ $$\frac{10 + 20 + 120}{3} = 50$$
 
 #+DOWNLOADED: screenshot @ 2026-06-12 21:24:02
 [[file:images/2026-06-12_21-24-02_screenshot.png]]
+
+** Multi-level Feedback
+:PROPERTIES:
+:ID:       a7e23327-fc54-401c-97c9-36759fab5643
+:END:
+
+- الـMLFQ بيقسم الـjops لـqueues, وكل queue بيبقي ليه priorty مختلفة.
+
+- القواعد الاساسية:
+  1. لو priority(A) > priority(B), A runs (B doesn't).
+  2. لو priority(A) = priority(B), A & B run in RR.
+
+- الـMLFQ هو scheduler بيتعلم طول ما هو شغال عشان يعرف يعمل توقعات افضل في المستقبل.
+- الوظيفة الاساسية للـMLFQ بتكمن في اعطاء كل jop الـpriority المناسبة
+  - فا مثلا لو في jop بتسيب الـCPU كتير مقابل انها بتستني input من الـkeyboard, فا الـMLFQ هيديها priority عالية لان دي المفروض interactive program بياخد input من الـuser.
+  - لكن لو jop تانية بتستهلك CPU كتير, الـMLFQ هيقلل الـpriority level بتاعها.
+
+    #+DOWNLOADED: screenshot @ 2026-06-15 20:00:33
+    [[file:images/2026-06-15_20-00-33_screenshot.png]]
+
+     كل jop بتدخل النظام جديد, بتبقي محطوتة في اعلي priority, بعد كدا الـscheduler بيحدد وقت معين بيكون هو الوقت اللي كل jop مسموحلها تقضيه علي مستوي priority معين, قبل ما الـschedulare يقرر انه يقلل الـpriority بتاعتها. (allotment)
+
+    فا هنلاقي عندنا نوعين من الـjops:
+    - CPU intensive: دي jops بتستهلك CPU كتير والـresponse time مش مهم بالنسبة لها.
+    - interactive jops ودي jops بتعمل I/O requests وبتسيب الـCPU كتير فا الresponse time مهم بالنسبة لها.
+
+      #+DOWNLOADED: screenshot @ 2026-06-15 21:24:52
+      [[file:images/2026-06-15_21-24-52_screenshot.png]]
+
+      لما الـjop بتخلص الـallotment بتاعها من غير ما تعمل IO requests يبقي الـjop دي بتستهلك CPU كتير والـscheduler بيقلل الـpriority بتاعها (move down to lower priority queue)
+
+      لو الـjop عملت IO request قبل ما نخلص الـallotment بتاعها, يبقي دي interactive jop فا الـschdeluer بيعلي الـpriority بتاعتها او بيسبها في نفس المستوي من غير يقلله عشان الـpriority تفضل سريعة, والـallotment بيتعمله reset.
+
+**** MLFQ approximate SJF
+
+بما ان كل الـjops بتبدأ في اعلي priority, والـshort jops اللي بتحتاج وقت اقل من الـallotment او الـtime slice اللي محدده الـscheduler, ديما هتخلص الاول في priority عالي, لكن الـlong running jops اللي محتاجة وقت اكبر من الـallotment, فا هتفضل الـpriority بتاعتها تقل كل شوية والـshort jops هي اللي بتاخد الاولية الاعلي, لذلك فا الـMLFQ نوعا ما بيقدر يحاكي الـSJF بطريقة ذكية بدون ما يعرف الـruntime بتاع كل jop مسبقا زي الـSJF.
+
+
+- لحد دلوقتي عندنا 3 مشاكل:
+  1. كل ما الـshort jobs هتزيد الـCPU هينشغل معاها اكتر لان الـlong-running jobs عمالة تقل في الـpriority والـCPU مش هيقربلها خالص (starvation).
+  2. لو الـlong-running jobs اتحولت من CPU bound لـinteractive, فا برضوا هتفضل في priority قليلة.
+  3. ممكن المطورين يخدعوا الـscheduler عن طريق انهم يخلوا البرنامج يشتغل 99% من وقت الـallotment بشكل عادي وفي اخر الوقت خالص يقوموا عاملين IO request عشان الـscheduler ميقللش الـpriority.
+
+#+begin_example
+Allotment = 10ms ;; Keeps reseting
+
+Run 9ms
+Do fake I/O
+Run 9ms
+Do fake I/O
+...
+#+end_example
+
+**** Priority Boots Rule:
+
+       الـrule دي بتحل اول مشكلتين عن طريق انها كل مدة معينة بتنقل جميع الـjobs للـhigh priority queue من تاني, والمدة دي مش ثابتة, الـscheduler بيحددها علي حسب سلوك النظام.
+
+**** Better Accounting Rule:
+
+الـrule دي بتقول بدل ما هنعمل reset للـAllotment لما الـjob تعمل IO, لا الـscheduler هيوقف العداد, ولما الـjob تصحي تاني هيكمل عند اخر وقت وقفت عنده. وكدا حلينا مشكلة خداع الـscheduler, ولما الـjob تستهلك الـallotment بتاعها وتقل في الـpriority, هيتعملها boost تاني بعد مدة معينة.
+
+** Lottery Scheduling
+
+الـlottery scheduler هو scheduler بيهتم اكتر بالمشاركة العادلة او التناسبية.
+بدل ما بيهتم بتحسين الـturnaround time او الـresponse time, هو بيهتم اكتر بمشاركة وقت الـCPU بطريقة نسبية, يعني كل proccess بتاخد نسبة معين من وقت الـCPU.
+
+*** Tickets
+:PROPERTIES:
+:ID:       0553b5fb-20b5-4fa1-b944-5ccd8259c447
+:END:
+
+واحدة من الاليات المستخدمة لتنفيذ المشاركة النسبية هي الـtickets, كل process ليها عدد معين من الـtickets بيمثل النسبة اللي هتحصل عليها من وقت الـCPU.
+
+مثال:
+
+- process A: has 75 tickets.
+- process B: has 25 tickets.
+
+  هنا process A في الاغلب هتحصل علي 75% من الـCPU time, و process B هتصحل علي 25%
+
+  كل ما الـtime slice بتخلص, الـscheduler بيعمل قرعة, يختار فيها ticket عشوائي والـprocess اللي معاها الـticket ده هي اللي هتتنفذ في الـtime slice الجاية.
+
+  يعني مثلا كل الـtickets من 1 لـ 75 مع process A, وكل الـtickets من 76 لحد 100 مع process B, فا لو الـscheduler مثلا اختار الـticket رقم 45 فا process A هي اللي هتتنفذ
+
+  ممكن process B تكون محظوظة والـtickets بتاعتها تكسب اكتر من مرة ورا بعض, ولكن مع مرور الوقت دائما النسبة هتكون 75 - 25, فا الية عمل النظام ده بتشتغل بشكل *احتمالي* مش *حتمي*.
+
+  #+DOWNLOADED: screenshot @ 2026-06-17 18:09:03
+  [[file:images/2026-06-17_18-09-03_screenshot.png]]
+
+**** Implementation
+:PROPERTIES:
+:ID:       d1d182c6-c87a-42c5-aba8-47e259b3af77
+:END:
+  #+DOWNLOADED: screenshot @ 2026-06-17 18:42:21
+
+  التنفيذ العملي للكلام ده هيكون بسيط, اولا هنحتاج random number generator كويس ودقيق, وهنحتاج data structure نخزن فيها الـjops زي الـList.
+
+  هناخد الرقم العشوائي اللي طلع واللي المفروض يكون >= العدد الكلي للـtickets, وهنلف علي jop في الـList, ونجمع عدد tickets في counter, والـjop اللي هيكون عندها عدد tickets اكبر من او بيساوي الـrange الحالي هي اللي هتكسب وهتتفذ.
+  [[file:images/2026-06-17_18-42-21_screenshot.png]]
+
+#+DOWNLOADED: screenshot @ 2026-06-17 19:17:55
+[[file:images/2026-06-17_19-17-55_screenshot.png]]
+
+*** Problems with lottery scheduler
+
+**** Not fair with short jobs (short runtime)
+
+الـlottery scheduler مش بيبقي عادل مع الـjobs اللي الـruntime بتاعها قصير, فا مثلا لو عندنا 2 jobs الـruntime بتاعهم واحدك (R = 10), وكل jop عندها نفس عدد الـtickets, فابالتالي النسبة المتوقعة لكل job انها تاخد 50% من الـCPU time.
+
+ولما الـscheduler يعمل القرعة, ممكن job من الاتنين تكسب كذا مرة ورا بعض بالحظ, والتانية تفضل مستنياها, وده طبيهي مش دي المشكلة.
+
+لكن المشكلة بتظهر لما يكون الـruntime قصير فا ساعتها الـjop اللي كسبت عدد مرات كتر هتخلص الاول مع ان المفروض انهم يخلصوا مع بعض في نفس الوقت, لكن لو الـruntime كبير فا مع مرور الوقت النسبة هتقرب من 50 50 والـ2 jobs تقريبا هيخلصوا مع بعض وهتكون نسبة العدالة اكبر.
+
+**** How to assign tickets?
+
+ازاي هنقسم الـtickets علي الـjobs وهيكون بناءا علي ايه؟ ممكن ندي الـuser عدد من الـtickets ونخليه يقسمها هو بنائا علي اهمية الـjobs بالنسباله, ولكن ده مش ميعتبرش حل لان مش دائما الـuser هيكون عارف ازاي يعمل كدا. وتظل مشكلة الـticket assignment ملهاش حل جذري لحد دلوقتي.
+
+
+*** Stride scheduler
+
+الـstride scheduler هو شبه الـlottery scheduler ولكن بيشتغل بطريقة *deterministic* مش بطريقة عشوائية.
+
+احنا مازال عندنا نفس concept الـtickets ولكن القرار اللي بيحدد مين الـjob اللي عليها الدور تشتغل هيتم بشكل حتمي مش عشوائي.
+
+هناخد عدد الـtickets اللي بتملكه كل job ونقسمه علي عدد ثابت كبير ولكين مثلا 10000, والناتج هيكون اسمه الـstride او الخطوة.
+
+بعد كدا كل job بتشتغل بنجمع الـstride بتاعها علي عداد خاص بيها اسمه الـpass value.
+
+والـjob اللي هيجي عليها الدور بعد هتكون الـjob اللي عندها اصغر *pass value*.
+
+*مثال:*
+
+عندنا 3 jobs هما A, B, C والـtickets بتاعتهم هي 100, 50, 250 بالترتيب.
+
+- هنقسم العدد الثابت علي كل tickets عشان نحسب الـstride لكل job:
+  - $$ A = 10000 / 100 = 100 \; stride$$
+  - $$ B = 10000 / 50 = 200 \; stride$$
+  - $$ C = 10000 / 250 = 40 \; stride$$
+- الـPass value بتاعتهم كلهم هتساوي 0 في الاول فا هنختار واحدة منهم تبدأ بشكل عشوائي, ولكن هنختار A.
+- A هتشتغل لـtime slice معين وبعد كدا هنجمع الـstride بتاعها علي الـpass value يعني
+   الـpass = 100 + 0 = 100.
+- كدا الوضع الحالي بقا (A=100, B=0, C=0), هنختار واحد عشوائي من B و C وليكن B
+- B هتشتغل لـtime slice, وبعد كدا والـpass = 200.
+- كدا الوضع الحالي (A=100, B=200, C=0), فا هنختار C عشان هي اصغر pass فيهم.
+- C هتشتغل وهيبقي الـpass = 40.
+- كدا الوضع الحالي (A=100, B=200, C=40), فا C هتشتغل تاني, وهكذا..
+
+  وهنلاحظ في كل job اشتغلت فعلا عدد مرات موازي لنسبة الـtickets اللي معاها بشكل عادل اكتر.
+
+**** The problem with Stride scheduler
+
+مشكلة الـstride scheduler ان لو في job جديدة دخلت النظام في نص ما A,B,C شغالين, الـjob الجديدة هتاخد pass value بـ0, وهيبقي ليها الاولوية عن الثلاثة الباقيين وهتحتكر الـCPU لفترة كبيرة لحد ما الـpass value بتاعها يزيد ويبقي قريب من الباقيين.
+
+علي عكس الـlottery scheduler اللي لو job جديدة دخلت, كل اللي الـscheduler هيعمله انه هيزود عدد الـtickets بتاعها علي العدد الكلي للـtickets, والرقم العشوائي الجديد اللي هيطلع هتضمن الـjob الجديدة دي والعملية هتكمل عادي بشكل سلس.
