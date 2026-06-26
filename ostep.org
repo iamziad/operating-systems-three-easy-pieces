@@ -920,7 +920,6 @@ Do fake I/O
 
 ازاي هنقسم الـtickets علي الـjobs وهيكون بناءا علي ايه؟ ممكن ندي الـuser عدد من الـtickets ونخليه يقسمها هو بنائا علي اهمية الـjobs بالنسباله, ولكن ده مش ميعتبرش حل لان مش دائما الـuser هيكون عارف ازاي يعمل كدا. وتظل مشكلة الـticket assignment ملهاش حل جذري لحد دلوقتي.
 
-
 *** Stride scheduler
 
 الـstride scheduler هو شبه الـlottery scheduler ولكن بيشتغل بطريقة *deterministic* مش بطريقة عشوائية.
@@ -957,3 +956,52 @@ Do fake I/O
 مشكلة الـstride scheduler ان لو في job جديدة دخلت النظام في نص ما A,B,C شغالين, الـjob الجديدة هتاخد pass value بـ0, وهيبقي ليها الاولوية عن الثلاثة الباقيين وهتحتكر الـCPU لفترة كبيرة لحد ما الـpass value بتاعها يزيد ويبقي قريب من الباقيين.
 
 علي عكس الـlottery scheduler اللي لو job جديدة دخلت, كل اللي الـscheduler هيعمله انه هيزود عدد الـtickets بتاعها علي العدد الكلي للـtickets, والرقم العشوائي الجديد اللي هيطلع هتضمن الـjob الجديدة دي والعملية هتكمل عادي بشكل سلس.
+
+*** CFS - Complete fair scheduler
+:PROPERTIES:
+:ID:       66d60d82-4239-4529-8d3e-f98700d0454e
+:END:
+
+  - الـCFS هو scheduler ذكي وسريع جدا وكان هو المستخدم بشكل اساسي في Linux حتي 2007.
+  - بيشتغل عن طريق انه بيجمع الـruntime بتاع كل process في متغير اسمه الـvruntime, وبيحدد الـjob اللي عليها الدور عن طريق انه بيختار الـjob اللي عندها اقل vruntime.
+  - الـpriorites فيه بتشتغل عن طريق الـNiceness او الـnice level, كل process ليها nice-level من -20:19 بيـMap لـweight, و الفرق بين الـweights ثابت.
+  - لو الـnice-level زاد, معني كدا ان الـprocess دي مش بتستهلك CPU كتير وبالتالي الـCFS هيحددلها time slice قصيرة.
+  - الـtime slice مش ثابت وبيتحدد بنائا علي الـweights:
+
+    [[file:images/2026-06-24_08-41-35_screenshot.png]]
+
+    #+DOWNLOADED: screenshot @ 2026-06-24 09:03:06
+    [[file:images/2026-06-24_09-03-06_screenshot.png]]
+
+
+  - الـCFS بيعرف متغير تاني اسمه الـmin_granualrity وده اقل time slice ممكن الـschedluer يشتغل بيها, عشان نمنعه انه يشتغل في time slices صغيرة جدا فا يعمل context switching كتير.
+
+  - لو سبنا الـvruntime يزيد بطريقة متضاعفة, الـjobs اللي الـtime slice بتاعتها كبيرة الـvruntime بتاعها هيزيد بشكل كبير مع الوقت والـpriority بتاعتها هتقل والـCPU مش هيقربلها بعد كدا.
+
+  - الـvruntime الجديد بيتحسب عن طريق معادلة ذكية بيتخلي الـvruntime بتاع الـprocesses كلها يزيد بشكل متقارب حتي لو الفرق في الـtime slice بينهم كبير.
+
+  #+DOWNLOADED: screenshot @ 2026-06-24 09:01:57
+  [[file:images/2026-06-24_09-01-57_screenshot.png]]
+
+**** Red-Black Tree
+
+- الـCFS مش بيخزن الـjobs في List, لان الـsearching في الـlist بيبقي O(n), وده بطئ نسبيا بالذات لو النظام فيه processes كتيرة شغالة.
+- بدل كدا هو بيستخدم الـred-black tree وهي نوع ان انواع الـbalanced trees, و الـsearching و الـsorting فيها بيكون O(logn), وده اسرع بكتير.
+- الـscheduler بيخزن بس الـrunning و الـready jobs في الـtree, وبيشيل الـsleep او الـblocked jobs.
+- ولما job ترجع تبقا ready بيرجعها الـtree تاني وساعتها الـsorting بيقا سريع ومش بيحط overhead علي الـCPU.
+
+-------
+
+**** IO
+
+لما برنامج يدخل في وضع الـsleep, ويرجع يشتغل تاني, مينفعش يكمل علي اخر vruntime كان واقف عنده, لان في برامج تانية في الشجرة كانت شغالة والـvruntime بتاعها زاد, فا لو خلينا البرنامج ده يكمل من عند اخر vruntime, كدا هيحتقر الـCPU لفترة طويلة.
+
+الـCFS لما برنامج ينام فترة طويلة ويصحي بيخلي الـvruntime بتاعه مساوي لأقل vruntime موجود في الشجرة.
+
+ولكن ده بيأثر علي الـshort jobs اللي بتسيب الـCPU كتير, لانها كل مرة بترجع تاني بتلاقي الـvruntime بتاعها مساوي للـvruntime بتاع processes تانية اشتغلت لفترات طويلة و مش بيكون ليها الاولوية اللي تستحقها.
+
+عشان كدا الـCFS مبقاش مستخدم لانه مش احسن حاجة في سرعة الاستجابة (response time).
+
+**** Summary
+
+اختيار الـData structure الصح هو اساس حل اي مشكلة.
