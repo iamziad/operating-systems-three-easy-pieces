@@ -161,7 +161,7 @@ int main() {
 #+RESULTS:
 : hello
 **** Pipes & Redirects
-**** The low-level idea behind them
+***** The low-level idea behind them
 
 - لما بنفتح ملف باستخدام =open()= بيتعمل حاجتين:
   1. في الmemory space بتاعت الprocess بيتعمل FD Table.
@@ -216,13 +216,13 @@ int fd5 = dup(fd3);
 #+END_SRC
 
 -----
-**** Another important info
+***** Another important info
 
 - الfd الجديد ديما بياخد *اصغر* رقم متاح
 - اغلب الposix/unix utilies مصممة انها تقرأ من الstdin لو ما اتبعتلهاش argument محددة
 
 -----
-**** Redirects
+***** Redirects
 
 لما في الshell بتعمل =cat < input.txt=
 
@@ -242,7 +242,7 @@ if (fork() == 0) {
 #+END_SRC
 
 -----
-**** dup()
+***** dup()
 
 - الdup() بترجع fd جديد بيشاور علي نفس الopen file description اللي بيشاور عليه الfd القديم, فا كدا بقا عندنا 2 fd بيشاورا علي نفس الobject في الkernel, يعني الref count بتاع الobject ده بيقا 2
 
@@ -253,7 +253,7 @@ int savestdin = dup(0); // cloned the open file desc of stdin in a new fd
 #+end_src
 
 -----
-**** dup2()
+***** dup2()
 
 - الdup2() تختلف عن dup() في حاجات بسيطة ولكنها مهمة
 - *اولا* بدل مكان الkernel هو اللي بيحدد الfd الجديد زي في dup(), لا, احنا اللي بنحدد الfd الجديد اللي هيتشارك مع الfd القديم في نفس الofd
@@ -273,7 +273,7 @@ dup2(savestdin, 0); // clone 'savestdin' to stdin
 
 
 -----
-**** Thread-safe Redirection
+***** Thread-safe Redirection
 
 - مثال علي thread unsafe redirection
   1. بنقفل الstdin عشان نستخدم الfd 0 للملف بتاعنا
@@ -300,7 +300,7 @@ if (fork() == 0) {
 
 
 -----
-**** Pipes (Anonymous Pipe)
+***** Pipes (Anonymous Pipe)
 
 الpipe هي ماسورة نقل بيانات بين الprocesses او i/o byte stream , بتنقل البيانات في خط احادي (unidirectional).
 
@@ -1037,7 +1037,7 @@ Do fake I/O
 [[file:images/2026-06-27_04-04-04_screenshot.png]]
 
 
-***** ليه الـheap و الـstack بيكبروا عكس بعض؟
+***** Why heap and stack grow towards each others?
 
 - لان مش كل البرامج بتستخدم الاتنين بنفس النسبة, في برامج بتستخدم الـstack اكتر من الـheap او العكس, ولو الـOS خصص مساحة ثابتة لكل واحد فيهم, ده هيبقي غير عادل لان ممكن الـstack يتملي والبرنامج يضرب مع ان الـheap فاضي او العكس.
 - لاكن التصميم الذكي ده بيخليهم يتشاركوا مع بعض في مساحة كبيرة بدل ما كان كل واحد فيهم واخد مساحة اصغر لوحده, والبرنامج مش هيقف الا لو الاتنين تصادموا مع بعض.
@@ -1060,17 +1060,24 @@ Do fake I/O
 - الـDynamic relocation هي كانت اقدم وابسط فكرة عشان يتم الترجمة بين الـvirtual address والـphysical address.
 - فكرته بتتمحور حوالين اننا عندنا 2 registers في الـCPU:
   - الـ *Base register*: وده بيتخزن فيه اول عنوان للبرنامج في الذاكرة الحقيقية.
-  - الـ *Bound register*: وده بيتخزن فيه حجم البرنامج الكلي في الذاكرة الحقيقية, عشان منعديهوش.
+  - الـ *Bound register*: وده بيتخزن فيه حجم البرنامج الكلي, عشان منعديهوش.
 
 **** ألية الترجمة:
 
-- اي عنوان وهمي البرنامج بيطلب انه يقرأ او يكتب عليه, المعالج بيترجمه فورا (on the fly) لعنوان حقيقي عن طريق المعادلة البسيطة دي: *Physical Address = Virtual Address + Base*
+- اي عنوان وهمي البرنامج بيطلب انه يقرأ او يكتب عليه, المعالج بيترجمه فورا (on the fly) لعنوان حقيقي عن طريق المعادلة البسيطة دي: *Physical Address = Virtual Address (offset) + Base*
 
-  ولو الـ *Physical address* اصغر من الـ *bound* يبقي تمام, لكن لو اكبر بيرمي *segmentation fault*.
+  ولو الـ *offset* اصغر من الـ *bound* يبقي تمام, لكن لو اكبر بيرمي *segmentation fault* ومش بيعمل العملية الحسابية دي اصلا.
 
 - والجزء المسؤل عن الترجمة في المعالج اسمه Memory Management Unit MMU.
 
 - طبعا عملية الترجمة بتتم في الـkernel mode عشان نحمي الـregisters.
+
+- مثال:
+
+  - base: 32k (program starts in physical memory at 32k)
+  - bound: 2k (size of program)
+  - offset: 200
+    - *translated physical address* = base + offset = 32768 + 2000 = 34768
 
 ***** مسؤليات الـOS
 
@@ -1088,3 +1095,204 @@ Do fake I/O
 فكان الـOS مش بيقدر يقسم ذاكرة البرنامح علي كذا مكان, يا أما يتحط في الذاكرة بشكل متتالي يا أما يقوله مفيش مكان.
 
 وده بيعمل هدر كبير جدا في الذاكرة لان معظم البرامج واخدة مساحة اكبر بكتير من اللي محتاجها.
+
+** Segmentation
+
+- في طريقة الـBase and Bound القديمة كان البرامج بتتخزن بشكل contigous في الذاكرة, وكان في مساحة كبيرة بيتم اهداراها بسبب الـinternal fragmentation.
+
+- فكرة الـ *Segmentation* ان الـOS بيقسم كل جزء في البرنامج (stack, heap, code,..) لـsegment, وكل جزء هيبقا ليه Base و Bound خاص بيه.
+
+- و بكدا الـoperating system يقدر يقسم الـmemory بتاعت البرنامج, علي كذا مكان في الـPhysical memory.
+
+*** ازاي الـOS هيحدد كل segment؟
+
+- *Explicit approach*
+
+  الـOS بقسم الـvirtual address لاجزاء وبيخزن metadata فيه, بيخصص اكبر 2 bits وبيخزن فيهم قيمة بتعبر عن نوع الـsegment, والباقي بيعبر عن الـoffset
+
+  *مثال:*
+
+  وليكن العنوان اللي البرنامج طالبه هو 4200, فا بيتكتب كدا 1000 0110 0000 01
+
+  01 مثلا معناها الـheap segment, فا كدا الـMMU عرف العنوان ده بتاع انهي segment
+
+  بقيت الرقم اللي هو 1000 0110 0000 بيساوي 104, وده الـoffset
+
+  هياخد الـoffset يجمعها علي الـBase بتاع الـheap.
+
+- *عيب* الطريقة دي انها بتقص 4 bits من حجم العنوان, 2 bit للـsegment و 2 تانيين مهدرين في التقسيمة, وده طبعا ببيجي علي حساب الـoffset لاننا مش بنقدر نخزن offset كبير, اخرنا فقط 4kb (الـ12 bit الباقيين) وبالتالي كل segment اخره 4kb في المساحة.
+
+- *Implicit approach*
+
+في بعض الانظمة, مش بتعتمد علي تقسيم الـbits وتخزين data فيها, بل بتعتمد علي نوع العملية, يعني لو الـaddress جي من الـPC يبقي ده عنوان للـcode segment, لو جاي من الـstack pointer يبقي ده عنوان للـstack segment, لو جي من حاجة غيرهم يبقي ده عنوان للـheap segment.
+
+
+- *What about the stack* (Nigative offset)
+
+  عشان الـstack بيبدأ من الاخر ويكبر لتحت, فالـMMU بيقوم طارح الـBound (4kb) من الـoffset, والقيمة السالبة اللي هتطلع, هيجمعها علي الـBase, وبكدا يبقي اتحرك لتحت, وفي نفس الوقت معداش الـbound.
+
+
+*** Support for sharing - Protection bits
+:PROPERTIES:
+:ID:       9decafc6-c1fa-4131-acce-5eef49833215
+:END:
+
+لو فتحنا كذا instance من نفس البرنامج, فا كل instance هي عبارة عن process منفصلة بـaddress space منفصل, ولكن في بعض الاجزاء ممكن يتم مشاركتها بينهم زي الـ *Code segment*.
+
+الـOS بيخزن الـ *Code segment* مرة واحدة فقط في الـphysical memory, ويخلي كل الـinstances يشاوروا عليها.
+
+
+#+DOWNLOADED: screenshot @ 2026-07-06 23:34:35
+[[file:images/2026-07-06_23-34-35_screenshot.png]]
+
+
+الـOS بيستخدم protection bits, لكل segment عشان يحمي الـsegments الشتركة.
+
+** Free Space Management - Memory Allocators
+
+*** Internal vs External Fragmentation
+
+**** Internal fragmentation
+
+- ده بيحصل لما البرنامج يطلب مساحة في الذاكرة, ولكن الـOS بيديله مساحة اكبر من اللي هو محتاجها, فا بيبقي في مساحة مهدورة داخل الـblock اللي اتحجز,
+- و ده بسبب الـ *Memory aligning* وبسبب ان الـOS بيقسم الذاكرة لأجزاء *ثابتة* سواء في الأنظمة القديمة اللي بتعمل fixed partitioning او في الأنظمة الحديثة اللي بتستخدم نظام الـPaging.
+- فا مثلا البرنامج ممكن يكون طالب 3kb ولكن الذاكرة متقسمة لبلوكات حجمها 4kb فا في 1kb تم اهداره.
+
+**** External fragmentation
+:PROPERTIES:
+:ID:       0c7b5c1b-abda-4242-b851-2dfc7b873365
+:END:
+
+
+#+DOWNLOADED: screenshot @ 2026-07-09 07:56:23
+[[file:images/2026-07-09_07-56-23_screenshot.png]]
+
+- ده بيحصل في الانظمة اللي بتسمح للبرامج انها تطلب مساحات متغيرة الحجم علي قد احتياجها بالظبط, زي نظام الـsegmentation او الـdynamic allocation, وهنا مفيش هدر بيحصل داخل الـblock اللي اتحجز لان البرنامج خد memory علي قد اللي محتاجه بالظبط.
+- ولكن الهدر بيحصل مع مرور الوقت لما البرنامج يقعد يحجز مساحات متغيرة في اوقات مختلفة فا بيسيب وراه فراغات كتير في الميموري, الفراغات دي مساحتها الكلية ممكن تكون كبيرة وتكفي لبرنامج تاني جديد, ولكن المشكلة انها متقسمة علي مناطق مختلفة مش contiguous.
+
+s
+*** User-level-memory-allocation libraries
+
+**** Splitting and Coalescing
+
+***** Spliting (التقطيع)
+
+- لو برنامج طلب مساحة من الميموري مثلا حجمها 1kb واصغر block فاضي في الـذاكرة هو 10kb, فا الـOS هيقطع 1kb من البلوك ده يديها للبرنامج ويسيب الـ9kb الباقيين في الـfree list, وبكدا يبقي الـOS حل مشكلة الـinternal fragmentation.
+
+  #+begin_example <free list>
+  head -> [addr:0,  len:10] -> [addr:20, len:10] -> NULL
+  #+end_example
+
+  #+begin_example <free list>
+  head -> [addr:0, len:10] -> [addr:21, len:9] -> NULL
+  #+end_example
+
+***** Coalescing (الدمج)
+
+- لما برنامج كان واخد مساحة من الـmemory وعملها free, الـOS بيبص علي جيرانها اللي فوقيها وتحتها ولو لاقاهم فاضيين برضو, بيقوم دامجهم مع بعض, وبكدا يكون حل مشكلة الـexternal fragmentation, وده من ذكاء تصميم الـmemory allocators.
+
+#+begin_example <free list>
+head -> [addr:10, len:10] -> [addr:0, len:10] -> [addr:20, len:10] -> NULL
+#+end_example
+
+#+begin_example <free list>
+head -> [addr:0, len:30] -> NULL
+#+end_example
+
+**** Tracking size via headers
+
+لما البرنامج بيطلب مساحة في الذاكرة الـallocator بيحجز قبلها حاجة اسمها الـheader وده بيكون عبارة عن struct, شايل معلومات عن المساحة دي, عشان كدا الـ =()free= مش بتاخد حجم المساحة, هي بس بتاخد pointer علي المساحة دي, وبعد كدا الـallocator بيرجع خطوة لورا =ptr - 1= عشان يقرأ الـheader ويعرف حجم المساحة المحجوزة. =header_t *hptr = (header_t *) ptr - 1=
+
+- الـmagic number هو رقم ثابت بيعرف الـblock ده عشان يتاكد ان مفيش اي corruption.
+- لما البرنامج بيطلب مساحة حجمها N bytes, الـallocator بيدور علي قطعة حجمها N bytes + header size
+
+#+begin_src c
+typedef struct {
+    int size;
+    int magic;
+} header_t;
+
+void free(void *ptr) {
+    header_t *hptr = (header_t *) ptr - 1;
+    ...
+#+end_src
+
+**** Embedding A Free List
+
+الـallocator زي =()malloc= بيعمل list فيها كل المساحة الفاضية في الـheap والـlist دي بتتخزن في الـheap نفسه,
+
+- Free list
+#+begin_src c
+typedef struct __node_t {
+    int size;
+    struct __node_t *next;
+} node_t;
+#+end_src
+
+- الـalocator =()malloc= خد مساحة حجمها 4kb من الـOS, وطرح منها حجم الـnode اللي بتشاور علي المساحة الفاضية, عشان يقدر بعد كدا يبني free list فيها nodes بتشاور علي كل chunk فاضية.
+- وكدا كل
+
+#+begin_src c
+node_t *head = mmap(NULL, 4096, PROT_READ|PROT_WRITE,
+                     MAP_ANON|MAP_PRIVATE, -1, 0);
+head->size = 4096 - sizeof(node_t); // 4088
+head->next = NULL;
+#+end_src
+
+
+- لما مثلا نطلب من malloc مساحة حجمها 100 bytes, بيقوم طارح 108 bytes من الـfree list ويديني pointer بيشاور عليهم بعد الـheader.
+
+#+begin_src c
+// before malloc:
+free list: [size: 4088] -> NULL
+
+// after malloc(100)
+free list: [size: 3080] -> NULL
+#+end_src
+
+- وبعد كدا لما اعملهم free, هيقوم راجع خطوة لورا عشان يقرأ الـheader, ويقوم عامل node جديدة للـchunk دي في الـfree list, وكمان لو الـfree list فيها chunk تانية فاضية قريبة في العنوان من نفس الـchunk دي هيقون دامجهم علي بعض (coalescing).
+
+#+begin_src c
+// after free
+free list: [size: ~100] -> [size: 3980] -> NULL
+
+free list: [size: ~4088] -> NULL
+#+end_src
+
+- ولكن الـcoalescing من هيفيدنا لو القطع الفاضية دي مش متجاورة في الـvirtual memory
+
+#+begin_example
+Virtual heap addresses:  [0-100] free   [100-200] used   [200-300] free
+#+end_example
+
+*** Growing the Heap
+
+الـallocator لما مساحة الـheap بتخلص, بيروح يعمل systemcall ويوسع مساحة الـheap, وغالبا الـallocator بيبدأ بمساحة heap صغيرة ولو البرنامج احتاج مساحة اكبر, بيعمل system call.
+
+*** Basic Strategies - Allocator Policies
+
+الـAllocator عنده استراتيجيات مختلفة في البحث عن اكتر بلوك فاضي في الـfree list يكون مناسب لحجم المساحة اللي البرنامج طالبها.
+
+**** Best fit
+
+- ودي استراتيجية للبحث عن *اصغر* بلوك فاضي يكون اكبر من او يساوي حجم المساحة اللي البرنامج محتاجها, وده هيكون افضل بلوك مناسب للحجم ده, وبعد كدا يعمله split للحجم اللي البرنامج محتاجه.
+
+- عيب الطريقة دي: انها بطيئة لان الـallocator بيعمل full search في الـfree list, ولكن دي اكتر طريقة efficient من حيث الـexternal fragmentation.
+
+**** First fit
+
+- وهنا الـallocator بيدور علي *اول* فاضي يكون اكبر من او يساوي المساحة المطلوبة, وده بيكون سريع لان عادتا الـallocator مش هيحتاج يعمل full search.
+
+  - عيب الطريقة دي: هي ان بداية الـfree list غالبا هيكون مليان blocks فاضية كتير, فا الـexternal fragmentation كله هيبقي في اول الـlist, و لما الـallocator يجي يبحث تاني في الـlist, هياخد وقت اكبر لان الـlist عدد العناصر اللي فيها زاد.
+
+**** Next fit
+
+وده زي الـfirst fit بالظبط ولكن الـallocator لما بيجي يبحث مش بيبحث من اول الـlist, هو بيكون عنده pointer علي اخر مكان وقف عنده وبيكمل بحث من المكان ده, والطريقة دي مش بتقلل الـexternal fragmentation ولكنها بتوزعه بالتساوي علي الـlist كلها.
+
+**** Worst fit
+
+ودي عكس تمام الـBest fit, لانها بتدور علي *اكبر* block فاضي, بحيث لما تعمله split, الـblock اللي هيتبقي يكون كبير برضوا ونقلل الـexternal fragmentation, ولكن الطريقة دي طبعت بتزود الـfragmentation مش بتقلله لانها بتخلص علي كل الـblocks الكبيرة بسرعة جدا.
+
+----
+
+- الـBest fit والـ First fit هما الطريقتين الاكثر استخداما والاكثر كفاءة.
