@@ -1170,7 +1170,6 @@ Do fake I/O
 - ده بيحصل في الانظمة اللي بتسمح للبرامج انها تطلب مساحات متغيرة الحجم علي قد احتياجها بالظبط, زي نظام الـsegmentation او الـdynamic allocation, وهنا مفيش هدر بيحصل داخل الـblock اللي اتحجز لان البرنامج خد memory علي قد اللي محتاجه بالظبط.
 - ولكن الهدر بيحصل مع مرور الوقت لما البرنامج يقعد يحجز مساحات متغيرة في اوقات مختلفة فا بيسيب وراه فراغات كتير في الميموري, الفراغات دي مساحتها الكلية ممكن تكون كبيرة وتكفي لبرنامج تاني جديد, ولكن المشكلة انها متقسمة علي مناطق مختلفة مش contiguous.
 
-s
 *** User-level-memory-allocation libraries
 
 **** Splitting and Coalescing
@@ -1259,7 +1258,7 @@ free list: [size: ~100] -> [size: 3980] -> NULL
 free list: [size: ~4088] -> NULL
 #+end_src
 
-- ولكن الـcoalescing من هيفيدنا لو القطع الفاضية دي مش متجاورة في الـvirtual memory
+- ولكن الـcoalescing مش هيفيدنا لو القطع الفاضية دي مش متجاورة في الـvirtual memory
 
 #+begin_example
 Virtual heap addresses:  [0-100] free   [100-200] used   [200-300] free
@@ -1296,3 +1295,92 @@ Virtual heap addresses:  [0-100] free   [100-200] used   [200-300] free
 ----
 
 - الـBest fit والـ First fit هما الطريقتين الاكثر استخداما والاكثر كفاءة.
+
+** Paging: introduction
+
+*** Paging vs Segmentation
+
+لما نيجي نعمل virtualize للـmemory, في طريقتين اساسيين, هما الـsegmentation و الـpages.
+
+- الـsegmentation مبقاش مستخدم لانه بيقسم الـvirtual address space لـvariable-sized segments زي الـ (code, stack, head), وطبعا لما الـprocess تتمسح من الmemory بتسيب وراها فراغات كتير مكان الـsegments دي, (external fragmentation).
+
+- الطريقة الثانية هي استخدام الـ *paging*: الـpaging بيقسم الـvirtual address space لـfixed-sized units وكل unit او قطعة من دول بيكون اسمها *page*, وبالمثل في الـphysical memory, بتكون مقسمة لاجزاء متساوية برضو اسمها الـ *page frames*, وكل *frame* ممكن يستوعب *page* واحدة من اي process.
+
+  - الـpaging بيحل مشكلة الـexternal fragmentation, لانه قسم الـmemory لاجزاء متساوية, وكمان لان كل برنامج بيقسم في الـphysical memory مش بس في الـvirtual memory زي الـsegmentation.
+
+  - فا لو البرنامج محتاج مثلا 4 pages, كل page هتتخزن في اي frame فاضي في الـphysical memory, حتي لو في مناطق متفرقة, مش لازم يكونو متتاليين, وبكدا الـpaging مش بيهدر اي memory خالص من ناحية الـexternal fragmentation.
+
+*** Example on paging
+:PROPERTIES:
+:ID:       35572091-20ac-4d44-a489-3f14f2fd8f8b
+:END:
+
+تخيل عندنا address space مساحته 64kb, مقسوم علي 4 pages وكل page حجمها 16 byte, والـphysical memory مساحتها 128 bytes مقسمة علي 8 page frames.
+
+الـOS ممكن يحط الـpages دي في اي frames فاضية مش شرط تكون متجاورة.
+
+#+DOWNLOADED: screenshot @ 2026-07-18 11:41:40
+[[file:images/2026-07-18_11-41-40_screenshot.png]]
+
+وكدا الـframes 1, 4, 6, فاضيين وممكن اي pages تانية من اي process تتخزن فيهم بشكل طبيعي.
+
+عشان الـos يعرف كل page اتحطت في انهي frame في الـmemory, بيحتفظ بجدول في كل process اسمه الـ *page table* ودي بتبقي per-process data structure.
+
+*** Address Translation
+:PROPERTIES:
+:ID:       0c518303-4aae-44cc-91ad-c8effbf593f2
+:END:
+
+- الـvirtual address space في الانظمة الحديثة بيكون مقسم لاجزاء كتيرة بشكل ذكي ومعقد, لكن الفكرة العامة البسيطة اننا بيبقي عندنا جزئين , الـVPN وده الجزء اللي بيخزن رقم الـpage, والـoffset وده بيخزن الـoffset في الـmemory.
+
+  لو عندنا address space مساحته 64kb فا احنا محتاجين virtual address مساحته 6 bits (log(64)) عشان نخزن عنوان كل byte في الـ64.
+
+  الـ64kb مقسمين علي 4 pages كل page حجمها 16 byte, اذا احنا محتاجين:
+
+  - 2 bits for VPN - log(4 pages)
+  - 4 bits for offset - log(16 bytes page size)
+
+    #+DOWNLOADED: screenshot @ 2026-07-18 12:28:45
+    [[file:images/2026-07-18_12-28-45_screenshot.png]]
+
+- لو البرنامج عاوز يقرأ من virtual address 21, فا لما يتحول binary هيكون =010101=
+  - اول 2 bits هيكونوا =01= يعني الـVPN 1
+  - والـ4 الباقيين هيكونوا =0101= يعني 5 offset
+- اذا الـvirtual address 21 معناه احنا عاوزين الـbyte رقم 5 في الـpage رقم 1.
+
+  - الـ VPN رقم 1, هتترجم لـ PFN رقم 7 (111) والـoffset هيفدل زي ما هو
+
+    #+DOWNLOADED: screenshot @ 2026-07-18 12:35:53
+    [[file:images/2026-07-18_12-35-53_screenshot.png]]
+
+    - اذا الـphysical address هيكون =1110101= يعني 117, اذا احنا محتاجين نقرأ الـbyte رقم 117 في الـphysical memory.
+
+*** Page table stored in physical memory
+
+الـpage tables في الانظمة الحديثة بتكون ضخمة جدا, يعني مثلا لو عندنا address space حجمه 32bit يعني 4 مليار byte والـpage size بيساوي 4kb, يعني احنا عندا 4bil/4kb هيساوي 1m page (20 bits), يعني الـpage table هيكون فيها مليون entry, ولو كل entry بياخد 4 bytes, يعني حجم الـpage table هيكون 4mb, ولو عندنا 100 process شغالين, اذا احنا محتاجين نخزن 400mb في الـcache, وده استحالة يحصل, لان الـcache غالي جدا وحجمه صغير
+
+- فالـpage tables بتتخزن في الـphysical memory, وبيكون في register في الـCPU اسمه page table base register وده بيخزن عنوان الـpage table في الـphysical memory.
+
+*** Page Table Entry (PTE)
+
+ابسط شكل للـPage table بيكون عبارة عن array (linear page table), بيكون الـVPN هو الـindex اللي بيـmap للـPFN, الـPFN مش مجرد رقم الـframe, لا هو بيخزن معلومات تانية كتير:
+
+- الـValid bit: ودي بتحدد هل الـpage اللي البرنامج عاوز يقرأ منها مستخدمة فعلا وتبع البرنامج ولا مش تبعه اصلا سواء فاضية او تبع برنامج تاني, وفي الحالة دي هيرمي segmentation fault.
+
+- الـProtection bits: ودي بتحدد الصلاحيات بتاعت كل page, مثلا الـcode هيكون read only, والـheap هيكون read/write
+
+- الـPresent bit: وده بيقول هل الصفحة في الـRAM ولا في الـdisk.
+
+- الـDirty bit: وده بيقول هل الـpage اتغيرت في الـRAM ولا لسا مساوية لنفس حالتها في الـDisk.
+
+- الـReference bit: وده بيقول هل الـpage دي استخدمت ولا لا.
+
+*** Paging is slow
+
+بما ان الـPage table مخزنة في الـRAM, فا كل ما الـprocess تحاول تقرأ حاجة من الـmemory, فا الـCPU لازم:
+- يستخرج الـVPN من الـvirtual address.
+- وبعد كدا يقرا الـpage table من الـRAM ويشوف الـVPN ده تبع انهي PTE.
+- وبعد كدا يستخرج الـPFN ويضيفله الـoffset عشان يسحب الـphysical address.
+- وبعد كدا يروح للـRAM تاني عشان يقرأ الـphysical address ده.
+
+فا كل instruction الـCPU عاوز يقرأها لازم يعدي علي الـRAM كتير, وده بيبقي بطئ مقارنة بحاجة زي الـcache.
