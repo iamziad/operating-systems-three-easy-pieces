@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Paging: Smaller Tables — ملخص شابتر ٢٠</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg0:#1d2021;
+    --bg1:#282828;
+    --bg2:#32302f;
+    --bg3:#45403d;
+    --fg:#d4be98;
+    --fg-dim:#a89984;
+    --fg-muted:#7c6f64;
+    --yellow:#d8a657;
+    --green:#a9b665;
+    --red:#ea6962;
+    --blue:#7daea3;
+    --purple:#d3869b;
+    --orange:#e78a4e;
+    --aqua:#89b482;
+    --mono: 'JetBrainsMono Nerd Font', 'JetBrains Mono', monospace;
+    --arabic: 'Cairo', sans-serif;
+  }
+
+  *{box-sizing:border-box;}
+
+  html{scroll-behavior:smooth;}
+
+  body{
+    margin:0;
+    background:var(--bg0);
+    color:var(--fg);
+    font-family:var(--arabic);
+    line-height:1.9;
+    font-size:17px;
+  }
+
+  .ltr{ direction:ltr; unicode-bidi:isolate; font-family:var(--mono); }
+
+  a{ color:var(--blue); }
+
+  /* ===== Layout ===== */
+  .shell{
+    display:grid;
+    grid-template-columns: 1fr 280px;
+    max-width:1280px;
+    margin:0 auto;
+    gap:32px;
+    padding:0 24px;
+  }
+
+  main{ min-width:0; padding-bottom:120px; }
+
+  /* ===== Sidebar / TOC ===== */
+  .sidebar{
+    position:sticky;
+    top:24px;
+    align-self:start;
+    height:calc(100vh - 48px);
+    padding:18px 16px;
+    background:var(--bg1);
+    border:1px solid var(--bg3);
+    border-radius:6px;
+    overflow-y:auto;
+  }
+
+  .sidebar-head{
+    font-family:var(--mono);
+    font-size:12px;
+    color:var(--fg-muted);
+    letter-spacing:1px;
+    margin-bottom:14px;
+    border-bottom:1px solid var(--bg3);
+    padding-bottom:10px;
+  }
+  .sidebar-head .dot{ color:var(--green); }
+
+  .toc{ list-style:none; margin:0; padding:0; }
+  .toc li{ margin:2px 0; }
+  .toc a{
+    display:block;
+    padding:6px 10px;
+    border-radius:4px;
+    color:var(--fg-dim);
+    text-decoration:none;
+    font-size:14.5px;
+    border-right:2px solid transparent;
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .toc a:hover{ background:var(--bg2); color:var(--fg); }
+  .toc a.active{
+    background:var(--bg2);
+    color:var(--yellow);
+    border-right-color:var(--yellow);
+  }
+  .toc .num{ font-family:var(--mono); color:var(--orange); margin-left:6px; font-size:12px;}
+
+  /* ===== Hero ===== */
+  .hero{
+    padding:64px 0 32px;
+    border-bottom:1px solid var(--bg3);
+    margin-bottom:40px;
+  }
+  .hero-chapter{
+    display:inline-flex;
+    align-items:center;
+    gap:10px;
+    font-family:var(--mono);
+    color:var(--fg-muted);
+    font-size:14px;
+    letter-spacing:2px;
+    margin-bottom:18px;
+  }
+  .hero-chapter .num{
+    background:var(--yellow);
+    color:var(--bg0);
+    font-weight:700;
+    padding:2px 10px;
+    border-radius:3px;
+  }
+  .hero h1{
+    font-size:2.5rem;
+    margin:0 0 8px;
+    font-weight:900;
+    color:var(--fg);
+  }
+  .hero h1 .en{ display:block; font-family:var(--mono); color:var(--green); font-size:1.3rem; font-weight:500; margin-top:10px; direction:ltr; }
+  .hero p.lead{ color:var(--fg-dim); font-size:1.05rem; max-width:70ch; }
+
+  /* ===== Sections ===== */
+  section{ margin-bottom:64px; scroll-margin-top:24px; }
+  section h2{
+    font-size:1.6rem;
+    color:var(--yellow);
+    border-bottom:2px solid var(--bg3);
+    padding-bottom:10px;
+    margin-bottom:22px;
+    display:flex;
+    align-items:baseline;
+    gap:10px;
+  }
+  section h2 .tag{
+    font-family:var(--mono);
+    font-size:.8rem;
+    color:var(--bg0);
+    background:var(--yellow);
+    padding:2px 8px;
+    border-radius:3px;
+  }
+  section h3{ color:var(--aqua); font-size:1.15rem; margin-top:34px; }
+  p{ margin:14px 0; }
+  strong{ color:var(--orange); font-weight:700; }
+  code{ font-family:var(--mono); background:var(--bg2); padding:1px 6px; border-radius:3px; color:var(--green); direction:ltr; unicode-bidi:isolate; font-size:.92em; }
+  ul, ol{ padding-inline-start:26px; }
+  li{ margin:8px 0; }
+
+  /* ===== Callouts ===== */
+  .callout{
+    border-radius:6px;
+    padding:16px 20px;
+    margin:22px 0;
+    border-inline-start:4px solid var(--blue);
+    background:var(--bg1);
+  }
+  .callout .label{
+    font-family:var(--mono);
+    font-size:12px;
+    letter-spacing:1px;
+    color:var(--blue);
+    margin-bottom:6px;
+    display:block;
+  }
+  .callout.tip{ border-color:var(--green); }
+  .callout.tip .label{ color:var(--green); }
+  .callout.warn{ border-color:var(--red); }
+  .callout.warn .label{ color:var(--red); }
+
+  /* ===== Window panes (i3 / Emacs flavored) ===== */
+  .win{
+    background:var(--bg1);
+    border:1px solid var(--bg3);
+    border-top:3px solid var(--yellow);
+    border-radius:4px;
+    margin:26px 0;
+    overflow:hidden;
+    direction:ltr;
+  }
+  .win.blue{ border-top-color:var(--blue); }
+  .win.purple{ border-top-color:var(--purple); }
+  .win.aqua{ border-top-color:var(--aqua); }
+
+  .win-title{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:7px 14px;
+    background:var(--bg2);
+    font-family:var(--mono);
+    font-size:12.5px;
+    color:var(--fg-dim);
+    border-bottom:1px solid var(--bg3);
+  }
+  .win-title .name{ color:var(--fg); }
+  .win-title .flag{ color:var(--fg-muted); }
+
+  .win-body{ padding:20px; overflow-x:auto; }
+
+  .win-modeline{
+    display:flex;
+    justify-content:space-between;
+    padding:5px 14px;
+    background:var(--bg2);
+    border-top:1px solid var(--bg3);
+    font-family:var(--mono);
+    font-size:11.5px;
+    color:var(--bg0);
+  }
+  .win-modeline{ background:var(--green); color:var(--bg0); font-weight:700;}
+  .win-modeline .right{ opacity:.85; }
+
+  /* ===== Tables ===== */
+  table{ border-collapse:collapse; width:100%; font-family:var(--mono); font-size:13.5px; direction:ltr; }
+  th, td{ border:1px solid var(--bg3); padding:7px 10px; text-align:center; }
+  th{ background:var(--bg2); color:var(--fg-dim); font-weight:500; }
+  td.valid1{ color:var(--green); }
+  td.valid0{ color:var(--fg-muted); }
+  tr.invalid td{ color:var(--fg-muted); background:rgba(69,64,61,.35); }
+  td.pfn{ color:var(--orange); font-weight:700; }
+
+  /* ===== Bitfield diagram ===== */
+  .bitfield{ display:flex; direction:ltr; margin:18px 0; }
+  .bitfield .seg{
+    flex:1;
+    text-align:center;
+    padding:14px 4px;
+    font-family:var(--mono);
+    font-size:13px;
+    border:1px solid var(--bg3);
+    border-inline-start:none;
+  }
+  .bitfield .seg:first-child{ border-inline-start:1px solid var(--bg3); }
+  .bitfield .seg .bits{ font-size:11px; color:var(--fg-muted); display:block; margin-top:6px;}
+  .bitfield .pd{ background:rgba(216,166,87,.15); color:var(--yellow); }
+  .bitfield .pd2{ background:rgba(211,134,155,.15); color:var(--purple); }
+  .bitfield .pt{ background:rgba(125,174,163,.15); color:var(--blue); }
+  .bitfield .off{ background:rgba(124,111,100,.15); color:var(--fg-dim); }
+
+  /* ===== Memory strip diagram ===== */
+  .memstrip{ display:flex; flex-direction:column; gap:2px; direction:ltr; font-family:var(--mono); font-size:12.5px; }
+  .memstrip .row{ display:flex; align-items:center; gap:10px; }
+  .memstrip .idx{ width:26px; text-align:end; color:var(--fg-muted); }
+  .memstrip .cell{ flex:1; padding:5px 10px; border-radius:3px; }
+  .memstrip .code{ background:rgba(169,182,101,.18); color:var(--green); }
+  .memstrip .heap{ background:rgba(125,174,163,.18); color:var(--blue); }
+  .memstrip .stack{ background:rgba(211,134,155,.18); color:var(--purple); }
+  .memstrip .free{ background:transparent; color:var(--fg-muted); border:1px dashed var(--bg3); }
+
+  /* ===== Flow diagram ===== */
+  .flow{ direction:ltr; font-family:var(--mono); font-size:13px; }
+  .flow .step{
+    display:flex; align-items:center; gap:12px;
+    padding:10px 14px; margin:6px 0;
+    background:var(--bg2); border-radius:4px;
+    border-inline-start:3px solid var(--fg-muted);
+  }
+  .flow .step.hit{ border-color:var(--green); }
+  .flow .step.miss{ border-color:var(--orange); }
+  .flow .step.fault{ border-color:var(--red); }
+  .flow .step .n{ color:var(--fg-muted); min-width:16px; }
+  .flow .arrow{ text-align:center; color:var(--fg-muted); margin:2px 0; }
+
+  /* ===== Comparison grid ===== */
+  .compare{ display:grid; grid-template-columns:1fr 1fr; gap:18px; direction:ltr; }
+  @media (max-width:760px){ .compare{ grid-template-columns:1fr; } }
+
+  footer{
+    text-align:center;
+    color:var(--fg-muted);
+    font-family:var(--mono);
+    font-size:12.5px;
+    padding:40px 0;
+    border-top:1px solid var(--bg3);
+  }
+
+  @media (max-width:980px){
+    .shell{ grid-template-columns:1fr; }
+    .sidebar{ position:static; height:auto; order:-1; }
+  }
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <main>
+    <div class="hero">
+      <div class="hero-chapter"><span class="num">20</span> OSTEP · Virtual Memory</div>
+      <h1>الـ Page Tables الصغيرة
+        <span class="en">Paging: Smaller Tables</span>
+      </h1>
+      <p class="lead">إزاي بنحل مشكلة إن الـ page tables بتاخد memory كتير جداً — من فكرة الـ pages الأكبر، لحد الـ multi-level tables اللي بتستخدمها معظم الأنظمة الحديثة، وصولاً لـ inverted page tables.</p>
+    </div>
+
+    <section id="sec-problem">
+      <h2><span class="tag">20.0</span> المشكلة الأساسية</h2>
+      <p>خد أي <code>32-bit address space</code>، وافترض إن حجم كل <code>page</code> هو <code>4KB</code> (يعني <code>2^12</code> byte)، وكل <code>PTE</code> (page-table entry) حجمها <code>4 bytes</code>. هيبقى عندك تقريباً <strong>مليون virtual page</strong> (<code>2^32 / 2^12</code>)، ولما تضربهم في حجم الـ entry هتلاقي الـ page table نفسها بقت <code>4MB</code>.</p>
+      <p>المشكلة إن ده <strong>لكل process لوحدها</strong> — مش table واحدة للنظام كله. لو عندك 100 process شغالة في نفس اللحظة (حاجة عادية جداً)، يبقى إنت محجوز <strong>مئات الـ megabytes</strong> بس عشان تخزن page tables، من غير ما تكون استخدمت أي حاجة فعلياً.</p>
+      <div class="callout warn">
+        <span class="label">CRUX</span>
+        إزاي نخلي الـ page tables أصغر، من غير ما نخسر سرعة الوصول للـ translation؟
+      </div>
+    </section>
+
+    <section id="sec-bigger">
+      <h2><span class="tag">20.1</span> الحل الأول: Pages أكبر</h2>
+      <p>لو كبّرنا حجم الـ page نفسها (من <code>4KB</code> لـ <code>16KB</code> مثلاً)، عدد الـ entries المطلوبة يقل بنفس النسبة — لأن كل entry دلوقتي بتغطي مساحة أكبر من الـ address space.</p>
+      <p>المشكلة: الـ pages الكبيرة بتسبب <strong>internal fragmentation</strong> — الـ application بتاخد page كاملة بس تستخدم جزء صغير منها، والباقي بيتهدر جوه نفس الـ page. عشان كده أغلب الأنظمة (زي x86) بتفضّل pages صغيرة نسبياً (<code>4KB</code>).</p>
+    </section>
+
+    <section id="sec-hybrid">
+      <h2><span class="tag">20.2</span> الحل التاني: Hybrid (Paging + Segmentation)</h2>
+      <p>الفكرة أصلها من نظام <strong>Multics</strong> القديم: بدل page table واحدة للـ address space كله، اعمل <strong>page table منفصلة لكل segment</strong> (code, heap, stack). الـ base register بقى بيشاور على <em>مكان page table الـ segment</em> نفسها في الـ memory، مش على الـ segment مباشرة، والـ bound register بيحدد عدد الـ entries الصالحة فيها.</p>
+
+      <p>خد مثال بسيط: address space حجمها <code>16KB</code> بـ pages مقاسها <code>1KB</code>. لو الكود بيستخدم page واحدة بس، والـ heap page واحدة، والـ stack صفحتين — باقي الـ address space فاضي تماماً:</p>
+
+      <div class="win aqua">
+        <div class="win-title"><span class="name">figure-20.1.mem</span><span class="flag">-- address space layout --</span></div>
+        <div class="win-body">
+          <div class="memstrip">
+            <div class="row"><span class="idx">0</span><span class="cell code">code — VPN 0 → PFN 10</span></div>
+            <div class="row"><span class="idx">1-3</span><span class="cell free">unused</span></div>
+            <div class="row"><span class="idx">4</span><span class="cell heap">heap — VPN 4 → PFN 23</span></div>
+            <div class="row"><span class="idx">5-13</span><span class="cell free">unused</span></div>
+            <div class="row"><span class="idx">14</span><span class="cell stack">stack — VPN 14 → PFN 28</span></div>
+            <div class="row"><span class="idx">15</span><span class="cell stack">stack — VPN 15 → PFN 4</span></div>
+          </div>
+        </div>
+        <div class="win-modeline"><span class="left">U:--  16 lines</span><span class="right">valid: 4/16</span></div>
+      </div>
+
+      <p>شايف إزاي أغلب الـ page table فاضية (invalid)؟ ده هدر واضح، وده بس لـ address space صغيرة جداً — تخيل الوضع في <code>32-bit</code> address space حقيقية.</p>
+
+      <div class="callout tip">
+        <span class="label">TIP · USE HYBRIDS</span>
+        لما يكون عندك فكرتين كويسين لكن مختلفين، دايماً جرّب تجمعهم مع بعض — زي ما الـ Multics فريق جمعوا paging مع segmentation.
+      </div>
+
+      <p><strong>مشاكل الحل ده:</strong></p>
+      <ul>
+        <li>لسه معتمد على <code>segmentation</code>، اللي مش مرنة كفاية — لو الـ heap كبيرة بس <em>sparse</em> (متفرقة الاستخدام)، لسه هتهدر مساحة.</li>
+        <li>بيرجّع مشكلة <strong>external fragmentation</strong> — لأن أحجام الـ page tables بقت مختلفة عن بعضها، فصعب تلاقي مساحة فاضية مناسبة لكل واحدة.</li>
+      </ul>
+    </section>
+
+    <section id="sec-multilevel">
+      <h2><span class="tag">20.3</span> Multi-Level Page Tables</h2>
+      <p>ده الحل اللي فعلياً بتعتمد عليه أنظمة زي <code>x86</code> لحد دلوقتي. الفكرة: قسّم الـ page table لقطع بحجم <code>page</code> واحدة، ولو قطعة كاملة كلها <code>invalid</code>، <strong>متحجزش لها مساحة أصلاً</strong>.</p>
+      <p>عشان تعرف مين القطع المحجوزة، بتستخدم structure جديدة اسمها <strong>page directory</strong>. كل entry فيها (اسمها <code>PDE</code>) بتقولك: القطعة دي من الـ page table موجودة فين، أو إنها كلها invalid.</p>
+
+      <h3>مقارنة: Linear vs Multi-Level</h3>
+      <div class="compare">
+        <div class="win">
+          <div class="win-title"><span class="name">linear-pt.bin</span><span class="flag">16 pages allocated</span></div>
+          <div class="win-body">
+            <table>
+              <tr><th>#</th><th>valid</th><th>PFN</th></tr>
+              <tr><td>0</td><td class="valid1">1</td><td class="pfn">12</td></tr>
+              <tr><td>1</td><td class="valid1">1</td><td class="pfn">13</td></tr>
+              <tr class="invalid"><td>2</td><td class="valid0">0</td><td>—</td></tr>
+              <tr><td>3</td><td class="valid1">1</td><td class="pfn">100</td></tr>
+              <tr class="invalid"><td>...</td><td class="valid0">0</td><td>—</td></tr>
+              <tr class="invalid"><td>...</td><td class="valid0">0</td><td>—</td></tr>
+              <tr><td>14</td><td class="valid1">1</td><td class="pfn">86</td></tr>
+              <tr><td>15</td><td class="valid1">1</td><td class="pfn">15</td></tr>
+            </table>
+          </div>
+          <div class="win-modeline"><span class="left">every entry pre-allocated</span><span class="right">16/16 pages in RAM</span></div>
+        </div>
+
+        <div class="win blue">
+          <div class="win-title"><span class="name">page-directory.bin</span><span class="flag">2/2 chunks allocated</span></div>
+          <div class="win-body">
+            <table>
+              <tr><th>PDE</th><th>valid</th><th>PFN of PT chunk</th></tr>
+              <tr><td>0</td><td class="valid1">1</td><td class="pfn">201</td></tr>
+              <tr class="invalid"><td>1</td><td class="valid0">0</td><td><em>not allocated</em></td></tr>
+              <tr><td>2</td><td class="valid1">1</td><td class="pfn">204</td></tr>
+            </table>
+          </div>
+          <div class="win-modeline"><span class="left">only allocated pieces cost memory</span><span class="right">savings: 1 page</span></div>
+        </div>
+      </div>
+
+      <p>في الـ multi-level، بس القطعتين اللي فيهم valid entries هما اللي بياخدوا مساحة فعلية في الـ memory — الباقي "مش موجود" أصلاً، مش بس مُعلّم كـ invalid.</p>
+
+      <h3>مميزات وعيوب</h3>
+      <ul>
+        <li><strong>ميزة:</strong> بتحجز مساحة على قد الاستخدام الفعلي بس، مش على قد كل الـ address space.</li>
+        <li><strong>ميزة:</strong> كل قطعة بتترتب جوه <code>page</code> واحدة بالظبط، فسهل على الـ OS يحجز لها مكان — عكس الـ linear table اللي المفروض تبقى كلها <em>contiguous</em> في الـ physical memory (وده صعب لجدول كبير زي 4MB).</li>
+        <li><strong>عيب:</strong> على كل <code>TLB miss</code>، محتاج <strong>load اتنين</strong> من الـ memory بدل واحد (واحد للـ page directory، وواحد للـ PTE نفسها) — ده <em>time-space trade-off</em> واضح.</li>
+        <li><strong>عيب:</strong> تعقيد أكبر في الـ hardware/OS اللي بيعمل الـ lookup.</li>
+      </ul>
+
+      <h3>مثال تفصيلي</h3>
+      <p>افترض address space مقاسها <code>16KB</code> بـ pages مقاسها <code>64-byte</code> — يعني <code>14-bit</code> virtual address، منها <code>8 bits</code> للـ VPN و<code>6 bits</code> offset. الـ VPN بننقسم لـ <code>Page Directory Index</code> (أول 4 bits) و<code>Page Table Index</code> (4 bits اللي بعدهم):</p>
+
+      <div class="bitfield">
+        <div class="seg pd" style="flex:0.5">PD Index<span class="bits">bits 7-4</span></div>
+        <div class="seg pt" style="flex:0.5">PT Index<span class="bits">bits 3-0</span></div>
+        <div class="seg off" style="flex:0.75">Offset<span class="bits">6 bits</span></div>
+      </div>
+
+      <p>لو عندنا العنوان <code class="ltr">0x3F80</code> (اللي بيشاور على أول byte من VPN رقم <code>254</code>): أول 4 bits بتختار آخر entry في الـ page directory، اللي بيقولنا إن القطعة دي موجودة في <code>PFN 101</code>. بعدين الـ 4 bits اللي بعدهم بيختاروا الـ entry جوه القطعة دي، فنلاقي إن الصفحة اتماب على <code>PFN 55</code>. بندمج <code>PFN 55</code> مع الـ offset، ونطلع بالعنوان الفعلي في الـ physical memory.</p>
+
+      <h3>لما مستويين مش كفاية</h3>
+      <p>لو الـ address space كبيرة والـ page صغيرة، ممكن حتى <strong>الـ page directory نفسها</strong> تكبر لدرجة إنها متترتبش جوه page واحدة! الحل: قسّم الـ page directory كمان لقطع، وحط <strong>page directory تاني فوقها</strong>. كده بقى عندك 3 مستويات بدل 2:</p>
+
+      <div class="bitfield">
+        <div class="seg pd" style="flex:0.6">PD Index 0</div>
+        <div class="seg pd2" style="flex:0.6">PD Index 1</div>
+        <div class="seg pt" style="flex:0.5">PT Index</div>
+        <div class="seg off" style="flex:0.7">Offset</div>
+      </div>
+
+      <p>المبدأ العام: كل ما الـ address space أكبر والـ page أصغر، كل ما احتجت مستويات أكتر عشان تضمن إن كل قطعة تترتب جوه <code>page</code> واحدة.</p>
+
+      <h3>مراجعة الـ TLB أول أي حاجة</h3>
+      <p>مهم توضيح إن كل الـ walk المعقد ده بيحصل بس لما يبقى فيه <strong>TLB miss</strong>. لو الـ translation موجودة في الـ TLB أصلاً (hit)، العنوان بيتكوّن على طول من غير ما نلمس الـ page table خالص:</p>
+
+      <div class="win purple">
+        <div class="win-title"><span class="name">translate.flow</span><span class="flag">-- control flow --</span></div>
+        <div class="win-body">
+          <div class="flow">
+            <div class="step"><span class="n">1</span> استخرج VPN من الـ virtual address</div>
+            <div class="step hit"><span class="n">2</span> دوّر في الـ TLB → <strong>Hit</strong>؟ كوّن الـ physical address على طول وخلاص</div>
+            <div class="arrow">↓ Miss</div>
+            <div class="step miss"><span class="n">3</span> هات الـ PDE من الـ page directory</div>
+            <div class="step fault"><span class="n">4</span> PDE غير valid؟ → Segmentation Fault</div>
+            <div class="step miss"><span class="n">5</span> هات الـ PTE من قطعة الـ page table</div>
+            <div class="step fault"><span class="n">6</span> PTE غير valid أو الصلاحيات غلط؟ → Fault</div>
+            <div class="step hit"><span class="n">7</span> خزّن الترجمة في الـ TLB وأعد تنفيذ التعليمة</div>
+          </div>
+        </div>
+        <div class="win-modeline"><span class="left">2 memory refs on miss</span><span class="right">0 refs on hit</span></div>
+      </div>
+    </section>
+
+    <section id="sec-inverted">
+      <h2><span class="tag">20.4</span> Inverted Page Tables</h2>
+      <p>توفير أقصى للمساحة: بدل page table منفصلة لكل process، اعمل <strong>table واحدة global للنظام كله</strong>، فيها entry واحدة لكل <em>physical frame</em> (مش لكل virtual page). كل entry بتقول: الفريم ده مستخدم من أي process، وبيتماب على أي virtual page بتاعتها.</p>
+      <p>المشكلة: لازم <code>search</code> جوه الـ table دي عشان تلاقي الـ entry الصح، والـ linear scan هتبقى بطيئة. الحل الشائع: بناء <strong>hash table</strong> فوق الـ structure عشان يسرّع الـ lookup. <code>PowerPC</code> مثال معروف بيستخدم الأسلوب ده.</p>
+    </section>
+
+    <section id="sec-swap">
+      <h2><span class="tag">20.5</span> Swapping الـ Page Tables على الـ Disk</h2>
+      <p>حتى بعد كل الحيل اللي فاتت، ممكن الـ page tables تفضل كبيرة جداً وميتحطوش كلها في الـ memory مرة واحدة. الحل: بعض الأنظمة بتحط الـ page tables دي في <strong>kernel virtual memory</strong>، فتقدر تعمل <code>swap</code> لأجزاء منها على الـ disk وقت ما الـ memory تحت ضغط.</p>
+    </section>
+
+    <section id="sec-summary">
+      <h2><span class="tag">20.6</span> الخلاصة</h2>
+      <p>كل الحلول اللي شفناها بتوضح مبدأ واحد: الـ page table هي مجرد <strong>data structure</strong>، وأي data structure عندها <em>time-space trade-off</em>. كل ما الـ structure أصغر (وفّرت مساحة)، كل ما الوصول ليها أبطأ — خصوصاً وقت <code>TLB miss</code>.</p>
+      <ul>
+        <li><strong>Memory محدودة؟</strong> الـ structures الصغيرة (multi-level, inverted) أنسب.</li>
+        <li><strong>Memory متاحة + workload بتستخدم عدد كبير من الـ pages فعلياً؟</strong> يمكن تفضّل structure أكبر تسرّع التعامل مع الـ TLB misses.</li>
+      </ul>
+      <p>الاختيار الصح دايماً بيعتمد على قيود النظام اللي شغال عليه — مفيش حل واحد يناسب الكل.</p>
+    </section>
+
+    <footer>
+      مبني على Chapter 20 — Paging: Smaller Tables · OSTEP (Operating Systems: Three Easy Pieces)
+    </footer>
+  </main>
+
+  <aside class="sidebar">
+    <div class="sidebar-head"><span class="dot">●</span> chapter-20.org</div>
+    <ul class="toc">
+      <li><a href="#sec-problem" data-toc><span class="num">00</span>المشكلة</a></li>
+      <li><a href="#sec-bigger" data-toc><span class="num">01</span>Pages أكبر</a></li>
+      <li><a href="#sec-hybrid" data-toc><span class="num">02</span>Hybrid Approach</a></li>
+      <li><a href="#sec-multilevel" data-toc><span class="num">03</span>Multi-Level Tables</a></li>
+      <li><a href="#sec-inverted" data-toc><span class="num">04</span>Inverted Tables</a></li>
+      <li><a href="#sec-swap" data-toc><span class="num">05</span>Swapping</a></li>
+      <li><a href="#sec-summary" data-toc><span class="num">06</span>الخلاصة</a></li>
+    </ul>
+  </aside>
+
+</div>
+
+<script>
+  const links = document.querySelectorAll('[data-toc]');
+  const sections = Array.from(links).map(l => document.querySelector(l.getAttribute('href')));
+
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      const id = '#' + entry.target.id;
+      const link = document.querySelector('[data-toc][href="' + id + '"]');
+      if (entry.isIntersecting) {
+        links.forEach(l => l.classList.remove('active'));
+        link.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-20% 0px -70% 0px' });
+
+  sections.forEach(s => s && io.observe(s));
+</script>
+
+</body>
+</html>

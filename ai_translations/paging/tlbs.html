@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>TLBs — ملخص عربي</title>
+<style>
+@font-face{
+  font-family:'JBM';
+  src:local('JetBrainsMono Nerd Font'),local('JetBrains Mono');
+}
+:root{
+  --bg0:#282828;
+  --bg1:#32302f;
+  --bg2:#3c3836;
+  --fg:#d4be98;
+  --fg-dim:#a89984;
+  --red:#ea6962;
+  --green:#a9b665;
+  --yellow:#d8a657;
+  --blue:#7daea3;
+  --purple:#d3869b;
+  --aqua:#89b482;
+  --orange:#e78a4e;
+  --gray:#928374;
+  --border:#45403d;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;background:var(--bg0);color:var(--fg);}
+body{
+  font-family:'JBM','JetBrainsMono Nerd Font',ui-monospace,monospace;
+  line-height:1.9;
+  font-size:16px;
+  padding:0 0 80px 0;
+}
+.topbar{
+  border-bottom:1px solid var(--border);
+  background:var(--bg1);
+  padding:14px 24px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  direction:ltr;
+  font-size:13px;
+  color:var(--fg-dim);
+}
+.topbar .dots{display:flex;gap:6px;}
+.dots span{width:10px;height:10px;border-radius:50%;display:inline-block;}
+.dots span:nth-child(1){background:var(--red);}
+.dots span:nth-child(2){background:var(--yellow);}
+.dots span:nth-child(3){background:var(--green);}
+.wrap{max-width:900px;margin:0 auto;padding:0 28px;}
+.hero{
+  padding:56px 0 32px 0;
+  border-bottom:1px solid var(--border);
+  margin-bottom:8px;
+}
+.hero .eyebrow{
+  direction:ltr;
+  text-align:right;
+  color:var(--aqua);
+  font-size:13px;
+  letter-spacing:.5px;
+  margin-bottom:14px;
+}
+.hero h1{
+  font-size:34px;
+  margin:0 0 6px 0;
+  color:var(--fg);
+}
+.hero h1 .en{
+  direction:ltr;
+  display:inline-block;
+  color:var(--yellow);
+}
+.hero .sub{
+  color:var(--fg-dim);
+  font-size:15px;
+  margin-top:10px;
+}
+.crux{
+  border-right:4px solid var(--orange);
+  background:var(--bg1);
+  padding:16px 20px;
+  margin:26px 0;
+  border-radius:4px;
+}
+.crux .label{
+  direction:ltr;
+  color:var(--orange);
+  font-size:12px;
+  letter-spacing:1px;
+  margin-bottom:8px;
+  font-weight:bold;
+}
+.tip{
+  border-right:4px solid var(--blue);
+  background:var(--bg1);
+  padding:16px 20px;
+  margin:26px 0;
+  border-radius:4px;
+}
+.tip .label{
+  direction:ltr;
+  color:var(--blue);
+  font-size:12px;
+  letter-spacing:1px;
+  margin-bottom:8px;
+  font-weight:bold;
+}
+.aside{
+  border-right:4px solid var(--purple);
+  background:var(--bg1);
+  padding:16px 20px;
+  margin:26px 0;
+  border-radius:4px;
+}
+.aside .label{
+  direction:ltr;
+  color:var(--purple);
+  font-size:12px;
+  letter-spacing:1px;
+  margin-bottom:8px;
+  font-weight:bold;
+}
+section{
+  margin:44px 0;
+}
+h2{
+  font-size:22px;
+  color:var(--yellow);
+  border-bottom:1px solid var(--border);
+  padding-bottom:10px;
+  display:flex;
+  align-items:baseline;
+  gap:12px;
+}
+h2 .num{
+  direction:ltr;
+  color:var(--gray);
+  font-size:16px;
+}
+h3{
+  color:var(--aqua);
+  font-size:17px;
+  margin-top:28px;
+}
+p{margin:14px 0;}
+code, .code-inline{
+  direction:ltr;
+  unicode-bidi:embed;
+  background:var(--bg2);
+  color:var(--green);
+  padding:1px 6px;
+  border-radius:3px;
+  font-size:14px;
+  display:inline-block;
+}
+pre{
+  direction:ltr;
+  background:#1d1d1a;
+  border:1px solid var(--border);
+  border-radius:6px;
+  padding:18px 20px;
+  overflow-x:auto;
+  font-size:13.5px;
+  line-height:1.7;
+  margin:20px 0;
+}
+pre .c{color:var(--gray);}
+pre .kw{color:var(--red);}
+pre .fn{color:var(--yellow);}
+pre .num{color:var(--purple);}
+table{
+  width:100%;
+  border-collapse:collapse;
+  margin:20px 0;
+  direction:ltr;
+  font-size:14px;
+}
+th,td{
+  border:1px solid var(--border);
+  padding:8px 12px;
+  text-align:center;
+}
+th{
+  background:var(--bg2);
+  color:var(--yellow);
+}
+td.hit{color:var(--green);}
+td.miss{color:var(--red);}
+.pagegrid{
+  direction:ltr;
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:6px;
+  margin:20px 0;
+  font-size:13px;
+}
+.pagecell{
+  border:1px solid var(--border);
+  background:var(--bg2);
+  padding:10px;
+  border-radius:4px;
+}
+.pagecell .vpn{color:var(--gray);margin-bottom:4px;}
+.pagecell .items{color:var(--green);}
+.pagecell.empty{opacity:.35;}
+ul{padding-inline-start:22px;}
+li{margin:8px 0;}
+.term{color:var(--yellow);direction:ltr;display:inline-block;}
+.hitword{color:var(--green);font-weight:bold;}
+.missword{color:var(--red);font-weight:bold;}
+.footer{
+  text-align:center;
+  color:var(--gray);
+  font-size:12px;
+  margin-top:70px;
+  direction:ltr;
+}
+strong{color:var(--fg);}
+.summary-box{
+  background:var(--bg1);
+  border:1px solid var(--border);
+  border-radius:6px;
+  padding:20px 22px;
+  margin:20px 0;
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="dots"><span></span><span></span><span></span></div>
+  <div>man 19 os-notes — vm-tlbs</div>
+</div>
+
+<div class="wrap">
+
+  <div class="hero">
+    <div class="eyebrow">$ cat ostep/vm-tlbs.pdf | translate --lang=arz --terms=en</div>
+    <h1>الـ <span class="en">TLB</span> — ليه الـ Paging مش هيبقى بطيء</h1>
+    <div class="sub">ملخص وشرح بالعربي المصري لفصل الـ <span class="term">Translation-Lookaside Buffer</span> من OSTEP، مبني على القراية مش ترجمة حرفية.</div>
+  </div>
+
+  <section>
+    <h2><span class="num">19.0</span> المشكلة الأول</h2>
+    <p>
+      لما بتستخدم <span class="term">paging</span>، بتقسم الـ <span class="term">address space</span> بتاع البروسيس لحتت صغيرة ثابتة الحجم اسمها <span class="term">pages</span>. المشكلة إن ده بيولّد كمية كبيرة من الـ <span class="term">mapping information</span> (يعني الـ <span class="term">page table</span>) اللي لازم تتخزن في الـ <span class="term">physical memory</span>.
+    </p>
+    <p>
+      يعني عمليًا: كل مرة البروسيس عايز يعمل access لأي <span class="term">virtual address</span> — سواء عشان يجيب <span class="term">instruction</span> يشغّلها، أو يعمل <span class="term">load</span>/<span class="term">store</span> — الـ hardware المفروض يروح يقرا الـ page table الأول عشان يترجم العنوان ده. يعني كل access حقيقي واحد للـ memory بيتحول لـ access مضاعف: واحد للـ translation وواحد للداتا نفسها. لو ده بيحصل مع كل instruction، الأداء هيبقى وحش جدًا.
+    </p>
+    <div class="crux">
+      <div class="label">THE CRUX — إزاي نسرّع الـ address translation؟</div>
+      إزاي نقدر نسرّع عملية الـ translation، ونتفادى الـ extra memory reference اللي الـ paging بيفرضها؟ ونحتاج إيه من الـ hardware ومن الـ OS عشان كده يحصل؟
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="num">19.1</span> الحل: TLB</h2>
+    <p>
+      الحل اللي اتعمل: نضيف <span class="term">hardware cache</span> صغير جوه الـ <span class="term">MMU</span> (memory-management unit) اسمه <span class="term">TLB</span> — <span class="term">translation-lookaside buffer</span>. وظيفته إنه يخزن أشهر الـ <span class="term">virtual-to-physical translations</span> اللي البروسيس بيستخدمها كتير، عشان لو احتجتها تاني تلاقيها جاهزة من غير ما تدخل تدور في الـ page table تاني. الاسم الأدق ليه كان لازم يكون <span class="term">address-translation cache</span>، بس التسمية التاريخية عالقة.
+    </p>
+    <p>
+      كل ما يجيلك <span class="term">virtual address</span> جديد، الـ hardware بيعمل الآتي:
+    </p>
+    <ul>
+      <li>يقسم العنوان لـ جزئين: <span class="term">VPN</span> (virtual page number) و<span class="term">offset</span> جوه الصفحة.</li>
+      <li>يدوّر على الـ VPN ده جوه الـ TLB.</li>
+      <li>لو لقاه (<span class="hitword">TLB hit</span>): معناها الترجمة موجودة كاش جاهزة. ياخد الـ <span class="term">PFN</span> (physical frame number) من الـ TLB entry على طول، يركّبه مع الـ offset، ويوصل للـ <span class="term">physical address</span> — من غير ما يلمس الـ page table خالص. طبعًا بعد ما يتأكد إن الـ <span class="term">protection bits</span> بتسمح له بالـ access ده (read/write/execute).</li>
+      <li>لو مالقهوش (<span class="missword">TLB miss</span>): يضطر يروح يقرا الـ page table من الـ physical memory، يتأكد إن الـ entry دي <span class="term">valid</span> ومسموح له يوصلها، وبعدين يحدّث الـ TLB بالترجمة الجديدة دي، ويعيد تنفيذ نفس الـ instruction من الأول — والمرة دي هيلاقيها hit.</li>
+    </ul>
+
+    <pre><span class="c">// شرح مبسّط لمنطق الـ hardware عند كل access
+</span><span class="fn">VPN</span> = extract_vpn(virtual_address)
+(found, entry) = <span class="fn">tlb_lookup</span>(VPN)
+
+<span class="kw">if</span> found:                         <span class="c">// TLB hit</span>
+    <span class="kw">if</span> not allowed(entry.protection_bits):
+        raise <span class="fn">PROTECTION_FAULT</span>
+    physical_address = (entry.PFN &lt;&lt; shift) | offset
+    access_memory(physical_address)     <span class="c">// سريع، بلا لمس للـ page table</span>
+
+<span class="kw">else</span>:                              <span class="c">// TLB miss</span>
+    pte = read_page_table_entry(VPN)    <span class="c">// extra memory reference</span>
+    <span class="kw">if</span> not pte.valid:
+        raise <span class="fn">SEGMENTATION_FAULT</span>
+    <span class="kw">if</span> not allowed(pte.protection_bits):
+        raise <span class="fn">PROTECTION_FAULT</span>
+    tlb_insert(VPN, pte.PFN, pte.protection_bits)
+    retry_instruction()                 <span class="c">// المرة الجاية هتبقى hit</span></pre>
+
+    <p>
+      لاحظ إن الـ TLB miss مكلف مش بس عشان في memory reference إضافي، لكن كمان عشان بعده لازم تعيد تنفيذ الـ instruction من الأول. عشان كده الهدف الأساسي دايمًا إننا نقلل عدد الـ misses قد ما نقدر — لأن الـ TLB زي أي cache تاني، بيبقى مفيد بس لو الـ hit rate عالي.
+    </p>
+  </section>
+
+  <section>
+    <h2><span class="num">19.2</span> مثال: الوصول لـ array</h2>
+    <p>
+      علشان نفهم إزاي الـ TLB بيأثر عمليًا، تخيل عندك <span class="term">array</span> فيه 10 عناصر، كل عنصر <span class="term">4 bytes</span> (integer)، وبيبدأ من virtual address 100. وعندك نظام صغير تخيلي: <span class="term">address space</span> من 8 bits، وحجم الـ page 16 byte — يعني كل عنوان بيتقسم لـ 4 bits VPN و4 bits offset.
+    </p>
+    <p>
+      لو رسمنا إزاي الـ array ده اتوزع على الصفحات:
+    </p>
+    <div class="pagegrid">
+      <div class="pagecell"><div class="vpn">VPN = 06 (offset 04-15)</div><div class="items">a[0] a[1] a[2]</div></div>
+      <div class="pagecell"><div class="vpn">VPN = 07</div><div class="items">a[3] a[4] a[5] a[6]</div></div>
+      <div class="pagecell"><div class="vpn">VPN = 08</div><div class="items">a[7] a[8] a[9]</div></div>
+    </div>
+    <p>
+      دلوقتي تخيل loop بسيط بيمر على كل عناصر الـ array ويجمعها. كل access للـ array بيتحول لسؤال: "الـ VPN بتاعه موجود في TLB ولا لأ؟" النتيجة بتبقى كده:
+    </p>
+    <table>
+      <tr><th>العنصر</th><td>a[0]</td><td>a[1]</td><td>a[2]</td><td>a[3]</td><td>a[4]</td><td>a[5]</td><td>a[6]</td><td>a[7]</td><td>a[8]</td><td>a[9]</td></tr>
+      <tr><th>النتيجة</th>
+        <td class="miss">miss</td><td class="hit">hit</td><td class="hit">hit</td>
+        <td class="miss">miss</td><td class="hit">hit</td><td class="hit">hit</td><td class="hit">hit</td>
+        <td class="miss">miss</td><td class="hit">hit</td><td class="hit">hit</td>
+      </tr>
+    </table>
+    <p>
+      يعني: <span class="missword">miss</span>, hit, hit, <span class="missword">miss</span>, hit, hit, hit, <span class="missword">miss</span>, hit, hit — أول access لكل صفحة جديدة بيبقى miss (لازم يجيب الترجمة أول مرة)، وبعد كده كل العناصر الباقية اللي في نفس الصفحة بتبقى hit. الـ <span class="term">hit rate</span> هنا = 7 من 10 = 70%.
+    </p>
+    <p>
+      المفاجأة إن ده حصل رغم إن الـ array دي أول مرة تتقرا خالص — والسبب هو مبدأ اسمه <span class="term">spatial locality</span>: العناصر متجاورة في الذاكرة، فأول ما تجيب ترجمة صفحة واحدة، باقي العناصر اللي فيها بتستفاد مجانًا. ولو حجم الـ page كان أكبر (32 byte بدل 16 مثلاً)، كنا هنلاقي misses أقل، وده اللي بيحصل فعليًا في الأنظمة الحقيقية (pages بحجم 4KB) — الوصول للـ arrays بيبقى فيه miss واحد بس لكل صفحة.
+    </p>
+    <p>
+      ولو نفس الـ loop اتكرر تاني بعد كده على نفس الـ array، هتلاقي كل الـ accesses hits — وده بسبب <span class="term">temporal locality</span>: العناصر اتعملها access قريب، فالترجمة لسه في الـ TLB.
+    </p>
+    <div class="tip">
+      <div class="label">TIP — Caching في العموم</div>
+      فكرة الـ caching كلها مبنية على نوعين من الـ locality: <span class="term">temporal locality</span> (اللي استخدمته دلوقتي، غالبًا هتستخدمه تاني قريب — زي متغيرات الـ loop) و<span class="term">spatial locality</span> (لو وصلت لعنوان x، غالبًا هتوصل لحاجة قريبة منه). أي hardware cache — سواء TLB أو data cache — بيستغل المبدأين دول. وليه مش بنعمل الـ cache كبير جدًا عشان يخزن كل حاجة؟ لأن أي cache كبير بيبقى أبطأ بطبيعته (قيود فيزيائية زي سرعة الإشارة جوه الشريحة)، فاحنا مضطرين نفضل عندنا cache صغير وسريع.
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="num">19.3</span> مين بيتعامل مع الـ TLB miss؟</h2>
+    <p>
+      فيه مدرستين مختلفتين تمامًا في التعامل مع الـ TLB miss:
+    </p>
+    <h3>1) Hardware-managed TLB</h3>
+    <p>
+      الـ hardware نفسه هو اللي بيتعامل مع الـ miss بالكامل — من غير ما الـ OS يتدخل. الـ hardware لازم يكون عارف بالظبط فين الـ page table في الذاكرة (عن طريق register زي <span class="term">page-table base register</span>)، وشكلها بالظبط. لو miss حصل، الـ hardware نفسه بيعمل <span class="term">page-table walk</span>، يجيب الـ translation، يحدّث الـ TLB، ويعيد المحاولة. النمط ده اتربط تاريخيًا بمعماريات <span class="term">CISC</span> — زي Intel x86 القديمة، اللي بتستخدم CR3 register للإشارة للـ page table الحالي.
+    </p>
+    <h3>2) Software-managed TLB</h3>
+    <p>
+      المعماريات الأحدث (زي <span class="term">RISC</span> — MIPS, SPARC) بتاخد نهج مختلف: لو miss حصل، الـ hardware بس بيرفع <span class="term">exception</span> ويوقف تنفيذ التعليمات، يرفع الـ privilege level لـ kernel mode، ويقفز لـ <span class="term">trap handler</span> — وده كود مكتوب جوه الـ OS نفسه مخصوص لمعالجة الـ TLB misses. الكود ده بيدور على الترجمة في الـ page table، يحدّث الـ TLB بأوامر خاصة (privileged instructions)، وبعدين يرجع من الـ trap.
+    </p>
+    <p>
+      فيه تفصيلة مهمة جدًا هنا: الرجوع من الـ trap بتاع TLB miss لازم يرجع الـ execution لنفس الـ instruction اللي سببت الـ miss (مش اللي بعدها زي حالة الـ system call العادية) — عشان تتنفذ تاني ودلوقتي تبقى hit.
+    </p>
+    <p>
+      وتفصيلة تانية مهمة: الـ OS لازم ياخد باله إن كود معالجة الـ TLB miss نفسه ممكن يسبب سلسلة لا نهائية من الـ misses (miss جوه miss). الحل: إما إن الكود ده يتحط في physical memory مش محتاج ترجمة أصلاً، أو إن جزء من الـ TLB نفسه يتحجز entries دايمًا valid (اسمها <span class="term">wired entries</span>) مخصصة لكود المعالجة ده.
+    </p>
+    <p>
+      ميزة الـ software-managed هي المرونة — الـ OS حر يستخدم أي بنية بيانات يحبها للـ page table من غير ما يحتاج تغيير في الـ hardware — بالإضافة إن الـ hardware بيبقى أبسط بكتير (بس يرفع exception ويسيب الباقي للـ OS).
+    </p>
+    <div class="aside">
+      <div class="label">ASIDE — TLB valid bit مش نفس الـ Page Table valid bit</div>
+      غلطة شائعة إن الناس تلخبط بينهم. الـ <span class="term">valid bit</span> في الـ page table معناها إن الصفحة دي أصلاً مش متخصصة (allocated) للبروسيس، فلو حاول يوصلها ده خطأ برنامج (يؤدي لـ segmentation fault و kill للبروسيس). أما الـ valid bit في الـ TLB فمعناها بس: هل الـ slot ده جوه الـ TLB فيه ترجمة كاش حاليًا ولا فاضي؟ لما النظام يبدأ تشغيل، كل TLB entries بتكون invalid لأنه لسه محدش خزّن حاجة. وده مفيد جدًا وقت الـ context switch كمان — تخليهم كلهم invalid عشان البروسيس الجديد ميستخدمش بالغلط ترجمات بروسيس تاني.
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="num">19.4</span> إيه اللي جوه الـ TLB entry؟</h2>
+    <p>
+      عادة الـ TLB بيكون فيه 32 أو 64 أو 128 entry، وبيكون <span class="term">fully associative</span> — يعني أي ترجمة ممكن تتحط في أي مكان جوه الـ TLB، والـ hardware بيدور في كل الـ entries بالتوازي (parallel) عشان يلاقيها بسرعة. شكل الـ entry تقريبًا:
+    </p>
+    <table>
+      <tr><th>VPN</th><th>PFN</th><th>other bits</th></tr>
+      <tr><td>...</td><td>...</td><td>valid / protection / ASID / dirty ...</td></tr>
+    </table>
+    <p>
+      الـ "other bits" دي مهمة: فيه <span class="term">valid bit</span> (شرحناه فوق)، وفيه <span class="term">protection bits</span> بتحدد نوع الـ access المسموح — مثلاً صفحات الكود (code pages) بتتحدد كـ read+execute، وصفحات الـ heap بتتحدد كـ read+write. وفيه bits تانية زي <span class="term">address-space identifier</span> و<span class="term">dirty bit</span> هنشرحهم دلوقتي.
+    </p>
+  </section>
+
+  <section>
+    <h2><span class="num">19.5</span> المشكلة الكبيرة: Context Switches</h2>
+    <p>
+      لما بتحصل <span class="term">context switch</span> بين بروسيسين، الترجمات اللي في الـ TLB بتخص بس البروسيس اللي كان شغال. لو انتقلنا لبروسيس تاني من غير احتياط، ممكن يستخدم بالغلط ترجمة بتخص بروسيس مختلف تمامًا.
+    </p>
+    <p>
+      مثال: لو P1 شغال، والصفحة الافتراضية رقم 10 بتاعته بتترجم لـ physical frame 100. ولو P2 (بروسيس تاني) الصفحة رقم 10 بتاعته هي كمان بتترجم لـ physical frame تاني (170). لو الاتنين موجودين في نفس الـ TLB مع بعض من غير أي تمييز، الـ hardware مش هيعرف يفرّق: VPN=10 بتترجم لـ 100 ولا 170؟
+    </p>
+    <div class="crux">
+      <div class="label">THE CRUX — إزاي ندير محتوى الـ TLB وقت الـ context switch؟</div>
+      الترجمات القديمة بتاعة البروسيس اللي شغال قبل كده مالهاش معنى للبروسيس الجديد. الـ hardware أو الـ OS لازم يحلوا المشكلة دي.
+    </div>
+    <h3>الحل الأول: Flush كامل</h3>
+    <p>
+      أبسط حل: امسح الـ TLB بالكامل عند كل context switch (خلي كل الـ valid bits = 0). ده بيحل المشكلة بشكل مضمون، بس بثمن: كل بروسيس جديد لما يبدأ يشتغل هيضطر يمر بسلسلة TLB misses من الأول عشان يعمّر الـ TLB تاني — ولو الـ context switching بيحصل كتير، التكلفة دي بتبقى كبيرة.
+    </p>
+    <h3>الحل الأتقن: ASID</h3>
+    <p>
+      بعض الأنظمة بتضيف field جوه كل TLB entry اسمها <span class="term">ASID</span> (address-space identifier) — زي رقم identifier للبروسيس بس بعدد bits أقل (مثلاً 8 bits بدل 32 bit PID). بالطريقة دي، الـ entries بتاعة بروسيسات مختلفة تقدر تتعايش مع بعض جوه نفس الـ TLB من غير أي تلخبط — لأن الـ hardware بيقارن الـ ASID كمان مش بس الـ VPN. الـ OS بيحدد الـ ASID الحالي عن طريق register مخصص وقت الـ context switch، وبكده مفيش حاجة اسمها flush ضروري في كل مرة.
+    </p>
+    <h3>حالة إضافية: Shared pages</h3>
+    <p>
+      ممكن كمان يحصل إن بروسيسين مختلفين يشتركوا في نفس الـ physical page (زي code page لمكتبة مشتركة shared library). في الحالة دي هتلاقي entries مختلفة (VPN مختلف لكل بروسيس، ASID مختلف) لكن كلهم بيشيروا لنفس الـ PFN. ده مفيد جدًا لأنه بيقلل عدد الـ physical pages المستخدمة فعليًا، وبالتالي بيقلل استهلاك الذاكرة.
+    </p>
+  </section>
+
+  <section>
+    <h2><span class="num">19.6</span> Replacement Policy</h2>
+    <p>
+      زي أي cache، لما الـ TLB يبقى فاضي مكان جديد عشان يضيف entry جديدة، لازم يشيل واحدة قديمة — السؤال: يشيل مين؟
+    </p>
+    <ul>
+      <li><strong>LRU (Least-Recently-Used):</strong> يشيل الـ entry اللي مالهاش استخدام من أطول فترة، بناءً على افتراض إن الحاجة اللي ماتستخدمتش من زمان مش هتتستخدم قريب. ده بيستغل الـ locality الطبيعية في البرامج. لكن فيه حالة سيئة جدًا ليه: لو برنامج بيعمل loop على n+1 صفحة والـ TLB حجمه n بس، الـ LRU هيعمل miss في كل access واحد واحد بدون استثناء!</li>
+      <li><strong>Random:</strong> يشيل entry عشوائي. بسيط، وبيتفادى بالظبط الحالة السيئة اللي فوق دي — في نفس السيناريو (loop على n+1 صفحة) الـ random بيدي أداء أحسن بكتير من الـ LRU.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2><span class="num">19.7</span> مثال حقيقي: MIPS R4000</h2>
+    <p>
+      الـ MIPS R4000 بيدعم address space حجمه 32-bit وpages حجمها 4KB — يعني المفروض نستنى VPN حجمه 20 bit وoffset حجمه 12 bit. لكن الـ TLB entry الحقيقي بيستخدم بس 19 bit للـ VPN — لأن عناوين الـ user process بتيجي بس من نص الـ address space (النص التاني محجوز للـ kernel).
+    </p>
+    <p>
+      الـ VPN بيترجم لـ PFN حجمه لحد 24-bit، يعني النظام يقدر يدعم لحد 64GB physical memory. باقي الحقول المهمة:
+    </p>
+    <ul>
+      <li><span class="term">Global bit (G):</span> للصفحات المشتركة بين كل البروسيسات — لو الـ bit ده متفعّل، الـ ASID بيتجاهَل تمامًا.</li>
+      <li><span class="term">ASID (8-bit):</span> زي ما شرحنا فوق.</li>
+      <li><span class="term">Coherence bits (C):</span> بتحدد إزاي الصفحة دي بتتعامل معاها الـ hardware caching.</li>
+      <li><span class="term">Dirty bit:</span> بيتحدد لما الصفحة تتكتب فيها.</li>
+      <li><span class="term">Valid bit:</span> هل فيه ترجمة حقيقية في الـ entry دي.</li>
+      <li><span class="term">Page mask field:</span> بيدعم أحجام صفحات مختلفة (هنشوف ليه ده مفيد في الفصل الجاي).</li>
+    </ul>
+    <p>
+      عادة الـ TLB بتاع MIPS بيكون فيه 32 أو 64 entry، وبعضها محجوز للـ OS نفسه (عن طريق register اسمه <span class="term">wired</span> بيحدد كام entry محجوزة). الـ OS بيستخدم الـ entries المحجوزة دي لكود ومعلومات حساسة زمنيًا — زي كود معالجة الـ TLB miss نفسه — عشان يضمن إنه مش هيحصله miss وهو بيعالج miss تاني.
+    </p>
+    <p>
+      وعشان الـ TLB ده software-managed، الـ MIPS بيوفر 4 instructions مخصصة لإدارته: <span class="term">TLBP</span> (يفحص هل ترجمة معينة موجودة)، <span class="term">TLBR</span> (يقرا محتوى entry)، <span class="term">TLBWI</span> (يستبدل entry محددة)، <span class="term">TLBWR</span> (يستبدل entry عشوائية). كل التعليمات دي لازم تكون <span class="term">privileged</span> — لأن لو أي user process قدر يعدّل الـ TLB بنفسه، يقدر يعمل أي حاجة يعني أي حاجة (يستولي على الجهاز بالكامل مثلاً).
+    </p>
+    <div class="tip">
+      <div class="label">TIP — RAM مش دايمًا RAM (Culler's Law)</div>
+      اسم الـ RAM (random-access memory) بيوحي إن كل الأماكن في الذاكرة سريعة الوصول بنفس القدر. لكن بسبب أشياء زي الـ TLB، الوصول لصفحة مش موجودة حاليًا في الـ TLB ممكن يبقى أبطأ بكتير من صفحة موجودة كاش. يعني لو برنامجك بيوصل لعدد صفحات أكبر من سعة الـ TLB، هتلاقي تدهور ملحوظ في الأداء حتى لو الوصول "عشوائي" في الظاهر.
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="num">19.8</span> الخلاصة</h2>
+    <div class="summary-box">
+      <p>
+        الـ TLB بيخلي البرنامج يشتغل تقريبًا كأن الذاكرة مش بتتعمل لها virtualization خالص — وده إنجاز كبير، وأساسي عشان الـ paging يبقى عملي في الأنظمة الحديثة أصلاً.
+      </p>
+      <p>
+        لكن مش كل حاجة وردي: لو البرنامج بيوصل لعدد صفحات مختلفة في فترة قصيرة أكبر من سعة الـ TLB (يعني بيتخطى الـ <span class="term">TLB coverage</span>)، هيحصله عدد كبير من الـ misses والأداء هيقل بشكل واضح. المشكلة دي بتظهر بكثرة في برامج زي أنظمة قواعد البيانات (<span class="term">DBMS</span>) اللي بتوصل بشكل عشوائي لبنى بيانات كبيرة جدًا.
+      </p>
+      <p>
+        الحل اللي هيتكلم عنه الفصل الجاي: دعم <span class="term">larger page sizes</span> — كل صفحة أكبر تغطي مساحة أكبر بنفس عدد الـ TLB entries، فتزيد الـ effective coverage.
+      </p>
+      <p>
+        نقطة أخيرة: الـ TLB ممكن يبقى عنق زجاجة (bottleneck) في الـ CPU pipeline، خصوصًا مع الـ <span class="term">physically-indexed caches</span> اللي محتاجة تعمل الـ translation الأول قبل ما توصل للـ cache. عشان كده فيه تصميمات بتحاول توصل للـ cache باستخدام الـ virtual address مباشرة (<span class="term">virtually-indexed caches</span>) لتفادي التأخير ده — لكن ده بيجيب معاه مشاكل تصميم هاردوير تانية.
+      </p>
+    </div>
+    <p>
+      <strong>تمرين عملي (لو حابب تجرب):</strong> تقدر عمليًا تقيس حجم الـ TLB بتاعك بنفسك — تعمل loop بيوصل لعدد pages بيزيد تدريجيًا جوه array كبيرة، وتقيس الزمن لكل access. طول ما عدد الصفحات أقل من سعة الـ TLB، الوقت هيفضل شبه ثابت وسريع. أول ما تتخطى السعة دي، هتلاقي قفزة واضحة في الزمن — وده بيوريك عمليًا فين حدود الـ TLB (وأحيانًا بيبان فيه أكتر من مستوى TLB، يعني L1 وL2).
+    </p>
+  </section>
+
+  <div class="footer">// end of vm-tlbs summary — based on OSTEP ch.19</div>
+
+</div>
+</body>
+</html>

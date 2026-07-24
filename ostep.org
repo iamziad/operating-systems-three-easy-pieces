@@ -1384,3 +1384,146 @@ Virtual heap addresses:  [0-100] free   [100-200] used   [200-300] free
 - وبعد كدا يروح للـRAM تاني عشان يقرأ الـphysical address ده.
 
 فا كل instruction الـCPU عاوز يقرأها لازم يعدي علي الـRAM كتير, وده بيبقي بطئ مقارنة بحاجة زي الـcache.
+
+** Translation-Lookaside Buffer (TLB)
+
+- نظام الـpaging بيتطلب mapping information كتير, ولان الـPage tables بكون مخزنة في الـRAM فا عملية الترجمة بتكون مكلفة وكل instruction الـCPU محتاج بنفذها بتطلب memory access زيادة للترجمة ثم القراءة, يعني clock cycles اكتر لكل instruction.
+
+- الحل كان في استعانة الـOS بالـHardware, اتضاف *hardware cache* صغير في الـMMU اسمه *TLB*, وظيفته انه يخزن *احدث* الـvirtual-to-physical translations, بحيث انها تقلل عدد المرات اللي الـCPU مضطر يروح فيها للـRAM.
+
+*** اَلية عمله - Working Mechanism
+
+البرنامج عاوز يقرأ من virtual address معين, فا الـHardware بيعمل الاتي:
+
+- يستخرج الـ *VPN* و الـ *offset* من العنوان.
+- يدور علي الـVPN ده في الـTLB.
+- لو لقاه يبقي ده *cache hit* فا هيقوم واخد الـ *PFN* من الـTLB entry, ويضيف عليه الـ *offset* ويروح الـRAM عشان يقرأ البيانات اللي فيه, وكل ده من غير ما يلمس الـ *Page table* خالص ولا memory access كتير.
+- لو ملقاش الـVPN في الـTLB يبقي ده *cache miss*, وساعتها الـCPU هيضطر يروح للـPage table, ولكن بعد كدا هيروح يخزن ترجمة الـPage دي في الـTLB, والمرة الجاية هتكون *hit*.
+
+#+begin_src C++
+// شرح مبسّط لمنطق الـ hardware عند كل access
+VPN = extract_vpn(virtual_address)
+(found, entry) = tlb_lookup(VPN)
+
+if found:                         // TLB hit
+    if not allowed(entry.protection_bits):
+        raise PROTECTION_FAULT
+    physical_address = (entry.PFN << shift) | offset
+    access_memory(physical_address)     // سريع، بلا لمس للـ page table
+
+else:                              // TLB miss
+    pte = read_page_table_entry(VPN)    // extra memory reference
+    if not pte.valid:
+        raise SEGMENTATION_FAULT
+    if not allowed(pte.protection_bits):
+        raise PROTECTION_FAULT
+    tlb_insert(VPN, pte.PFN, pte.protection_bits)
+    retry_instruction()                 // المرة الجاية هتبقى hit
+#+end_src
+
+
+*** Example, Spatial locality and temporal locality
+:PROPERTIES:
+:ID:       feb685e4-77a5-430e-824d-7221739fb54a
+:END:
+
+لو عندنا array متخزنة علي 3 pages, كل page حجمها 16-bytes, وعندنا loop بيمر علي كل عناصر الـarray.
+كل access للـarray بيتحول لسؤال: هل الـVPN موجود في الـTLB ولا لا؟
+
+
+#+DOWNLOADED: screenshot @ 2026-07-18
+[[file:images/2026-07-21_19-38-43_screenshot.png]]
+
+
+#+DOWNLOADED: screenshot @ 2026-07-18
+[[file:images/2026-07-21_19-39-17_screenshot.png]]
+
+عدد الـ *hits* متخطي الـ70%, اول access فقط لكل صفحة بيبقي *miss* والباقي كله *hits*, وكل ما حجم الـpage بيكون اكبر كل ما الـhit rate بيعلي لان عدد العناصر المجاورة اللي بتستفاد من الـcaching بيكون اكبر (*spatial locality*).
+
+ولو نفس الـloop اتكررت تاني علي نفس الـarray وكان لسا نفس الـpages محفوظة في الـTLB,
+هناخد 100% cache hits وده اسمه (*temporal locality*).
+
+*** ASID
+
+الـTLB ممكن يكون في TLB entries لكذا process بنفس الـVPN, يعني ممكن يكون فيه VPN 10 بتاع process و VPN 10 بتاع process ثانية, فا عشان نحل المشكلة دي اثناء الـContext swithing:
+
+- اما بنعمل flush للـTLB ونسمح كل الـentries (بنخلي الـvalid bit ب0 في كل الـentries).
+- اما بنستخدم *ASID bit* في الـTLB entry, بتكون عبارة عن ID لكل process, فا نقدر نخزن TLB entries بنفس الـVPN لـproceses مختلفة.
+
+*** Shared Pages
+
+ممكن يكون كذا TLB entry بنفس الـVPN ولكن بـASID مختلف وكلهم بيشاوروا علي نفس الـPFN.
+
+*** Replacement Policy
+
+لما الـTLB بيتملي, فا افضل policy مستخدمة عشان نفضي مكان لـentries جديدة, هي اننا مسح entries قديمة بشكل *عشوائي*.
+
+في policies ثانية زي الـLRU ولكن ليها عيوب كبيرة.
+
+
+** Multi-Level Page Tables
+:PROPERTIES:
+:ID:       473c6a96-2a8f-403b-91ee-4ed28d4bf39c
+:END:
+
+*** Problem
+
+- الـPage Tables بيكون حجمها كبير جداّ, بالذات في الـaddress spaces الكبيرة زي الـ32bit و الـ64bit, حجمها بيوصل لمئات الميجابايتس.
+- في الـaddress spaces الكبيرة اللي بنستخدمها في الانظمة الحديثة الـ64bit, ممكن عدد الصفحات فيه يوصل لملايين, وبالبتالي عدد الـentries في الـPage table برضو هيوصل لملايين والـPage table بتكون كبيرة.
+
+*** Possible Solutions
+
+**** Paging + Segmentation
+
+- في حلول كتيرة طلعت زي اننا نستخدم ميكس بين الـsegmentation والـpaging بحيث بدل ما يكون عندنا page table للـaddress space كله, لا نقسم الـaddress space لـsegments وكل segment يكون ليها page table لوحدها وbase register بيشاور علي مكانها في الـmemory.
+
+- *ولكن* ده هيرجعنا لنفس مشاكل الـSegmentation والـexternal fragmentation اللي بتسببه
+
+**** Big Page Size
+
+- ممكن برضو نخلي حجم الـPage الواحدة كبير جدا, مثلا 16kb بدل 4kb وده هيقلل عدد الـPages وبالتالي عدد الـentries في الـPage table هيقل وهتبقي اصغر وكمان الـhit rate هيكون اعلي.
+
+- *ولكن* ده هيزود الـinternal fragmentation بشكل كبير جداّ
+
+*** Real Solution
+:PROPERTIES:
+:ID:       3b952601-e4df-4d7b-9975-68a21031d0ef
+:END:
+
+#+DOWNLOADED: screenshot @ 2026-07-23 18:08:15
+[[file:images/2026-07-23_18-08-15_screenshot.png]]
+
+
+- هنقسم الـPage table الكبيرة لقطع بحجم الـPage الواحدة (page-sized units), ولكن ده مازال معملش اي حاجة جديدة, الفكرة اننا هنخزن الـunits دي في data structure جديدة اسمها الـ *Page directory*, وهنخزن فقط الـ *valid entries*.
+- فا الـpage directory هيكون عبارة *فهرس* لكل الـPage tables الفرعية اللي فيها للـentries اللي بتشاور علي الـpages المستخدمة فعلا من البرنامج, مش كل الـentries لكل الـpages في الـaddress space.
+- الـValid entry في الـpage directory بيكون اسمها *PDE*.
+- الـpage-sized units دي بتكون عبارة عن Page Table فرعية صغيرة.
+
+**** تقسيمة الـVirtual address
+
+الـvirtual address في الانظمة الحديثة بتقسم لـ:
+
+- PDI: Page Directory index -> index for the approbriate page table
+- PTI: Page Table index     -> index for the approbriate PTE -> VPN
+- offset: the amount of steps inside the physical address.
+
+**** عيوب الـMulti-level page tables
+:PROPERTIES:
+:ID:       9f5ef83f-3445-4325-afa5-aa3a6413f7bf
+:END:
+
+
+#+DOWNLOADED: screenshot @ 2026-07-23 17:31:37
+[[file:images/2026-07-23_17-31-37_screenshot.png]]
+
+
+- النظام ده بيوفر مساحة ولكنه بيجي علي حساب الوقت, الـ *TLB miss* بيكون مكلف جداّ لان ساعتها الـhardware بيضطر يروح الـmemory مرتين (2 memory lockup), مش مرة واحدة زي الـlinear page table:
+
+  - هيروح مرة للـPage Directory عشان يجيب الـPDE.
+  - ومرة تانية للـPage Table عشان يجيب الـPTE.
+
+- ده غير ان الكود اللي بيهندل الـmiss هيكون معقد اكتر وبالتالي الـhardware هيستهلك cycles اكتر.
+
+- وفي الانظمة الحديثة الـ64bit, بتستخدم مستويات اكتر ممكن يوصل لـ4 او 5 مستويات, لان الـPage Directory بيكون كبير وبيتقسم لاجزاء اصغر. فالـTLB miss بيكون ابطأ بسبب الـPage wake الكبير.
+
+- الـ *Page walk* هي سلسلة من الـmemory lookups اللي الـMMU بيعملها لما يحصل TLB miss عشان يجيب الـPTE.
