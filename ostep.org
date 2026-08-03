@@ -1333,7 +1333,7 @@ Virtual heap addresses:  [0-100] free   [100-200] used   [200-300] free
 
 - الـvirtual address space في الانظمة الحديثة بيكون مقسم لاجزاء كتيرة بشكل ذكي ومعقد, لكن الفكرة العامة البسيطة اننا بيبقي عندنا جزئين , الـVPN وده الجزء اللي بيخزن رقم الـpage, والـoffset وده بيخزن الـoffset في الـmemory.
 
-  لو عندنا address space مساحته 64kb فا احنا محتاجين virtual address مساحته 6 bits (log(64)) عشان نخزن عنوان كل byte في الـ64.
+  لو عندنا address space مساحته 64bytes فا احنا محتاجين virtual address مساحته 6 bits (log(64)) عشان نخزن عنوان كل byte في الـ64.
 
   الـ64kb مقسمين علي 4 pages كل page حجمها 16 byte, اذا احنا محتاجين:
 
@@ -1460,7 +1460,6 @@ else:                              // TLB miss
 
 في policies ثانية زي الـLRU ولكن ليها عيوب كبيرة.
 
-
 ** Multi-Level Page Tables
 :PROPERTIES:
 :ID:       473c6a96-2a8f-403b-91ee-4ed28d4bf39c
@@ -1527,3 +1526,80 @@ else:                              // TLB miss
 - وفي الانظمة الحديثة الـ64bit, بتستخدم مستويات اكتر ممكن يوصل لـ4 او 5 مستويات, لان الـPage Directory بيكون كبير وبيتقسم لاجزاء اصغر. فالـTLB miss بيكون ابطأ بسبب الـPage wake الكبير.
 
 - الـ *Page walk* هي سلسلة من الـmemory lookups اللي الـMMU بيعملها لما يحصل TLB miss عشان يجيب الـPTE.
+
+** Swapping: Mechanisms
+
+*** Swap Space
+:PROPERTIES:
+:ID:       fd9575b7-9beb-4161-93fe-c26f65592a3f
+:END:
+
+- نظام التشغيل بيحجز مساحة علي الـdisk مخصوصة لنقل الصفحات ذهاباَ واياباَ بين الـRAM والـdisk ودي بنسميها الـswap space.
+
+  #+DOWNLOADED: screenshot @ 2026-08-02 23:18:07
+  [[file:images/2026-08-02_23-18-07_screenshot.png]]
+
+  - الـswap space مش هي المكان الوحيد اللي الـOS بيجيب منه صفحات, اي ملف binary بيكون فيه code و static data segments, ممكن الـOS بيشيل الصفحات المخصصة ليهم من الـRAM ولما يعوزها تاني, يروح يجيبها من الـbinary نفسه بدل ما يروح للـswap space, لان في الحالتين احنا مازلنا بنتعامل مع الـdisk.
+
+*** Present Bit
+:PROPERTIES:
+:ID:       6ad34e42-e0b8-4e30-aef7-1321e713acd2
+:END:
+
+الـpresent bit هي اللي بتعرفنا هل الـPage موجودة في الـRAM ولا اتعملها swap علي الـdisk.
+
+لما بيحصل memory reference لأي page:
+
+1. الـMMU بيستخرج الـVPN من الـvirtual address.
+2. بيروح يشوف الترجمة الخاصة متكيشة في الـTLB ولا لا, لو لقاه يبقي ده (TLB hit) وبياخد الـphysical address ويروح يجيب الداتا علي طول.
+3. لو مش موجود يبقي TLB miss, فا بيضطر يروح للـPage table في الـmemory ويجيب الـPTE الخاص بالـVPN ده.
+4. في الـPTE بيكون في valid bit و present bit, لو الصفحة valid و present بيجيب الـPFN  يحطه في الـTLB ويعيد الـprocess دي تاني.
+5. لكن لو مش present او valid يبقي ده *Page fault*.
+
+   #+DOWNLOADED: screenshot @ 2026-08-02 23:30:30
+   [[file:images/2026-08-02_23-30-30_screenshot.png]]
+
+*** Page Fault
+
+- الـPage fault هو لما الصفحة تكون مش valid والـprocess عاوزة تعمل access لـmemory مش بتعاعتها, او لما تكون الصفحة مش present ومش موجودة في الـRAM اصلا, وساعتها الـPFN بيكون بيشاور علي عنوان في الـdisk مش الـmemory.
+
+- الـOS هو اللي بيتعامل مع حالات الـPage fault, وبيكون في page-fault handler مخصص للنوع ده من الـexceptions.
+
+**** كيفية التعامل مع الـPage fault:
+:PROPERTIES:
+:ID:       6a50cf13-bfab-48c9-94db-694ce6c3cad0
+:END:
+
+- لما بيحصل page fault الـOS بيدور في الـPTE عشان يجيب الـPFN ويطلع منه العنوان بتاع الصفحة علي الـdisk. بعدين يبعت I/O request للـdisk عشان يجيب الصفحة ويرجعها تاني للـmemory
+
+لما عملية القراءة من الديسك بتخلص, نظام التشغيل بيعمل الخطوات دي:
+
+1. بيدحث الـpresent bit في الـPTE من 0 لـ 1.
+2. بيعدل العنوان اللي بيشاور عليه الـPFN للعنوان الجديد في الـRAM.
+3. بيعيد تنفيذ الـinstruction الاولي اللي كانت عاوزة تجيب الـPage وسببت Page fault.
+
+- لما يعيد الـinstruction دي تاني, هتتسبب في cache miss, فا هيروح للـPage table تاني عشان ييجيب الـPFN الجديد, ويكيش الترجمة في الـTLB.
+
+- لما الـOS بيعمل IO request للـdisk عشان يجيب الـpage, الـprocess بتكون في حالة blocked, والـOS بيخلي الـCPU يروح ينفذ اي process تانية لحد ما الـdisk يرد.
+
+  #+DOWNLOADED: screenshot @ 2026-08-03 00:49:27
+  [[file:images/2026-08-03_00-49-27_screenshot.png]]
+
+
+*** Page-Replacement Policy
+
+- لما بتكون الـpage معمولها swap ونيجي نرجعها تاني علي الـmemory, ممكن الـmemory ميكونش فيها ماكن فاضي, في الحالة دي الـOS مضطر يفضي مكان في الـRAM عن طريق انه يعمل swap لبعض الـpages عشان يفضي مكان للـpage الجديدة.
+
+- ولكن قرار اختيار انهي page هيتعملها swap out ده قرار مهم جدا لان لو الـOS اختار الصفحة الغلط ده هيـأثر علي اداء البرنامج بشكل كبير جدا ممكن يوصله انه يخليه يشتغل بسرعة الـdisk مش الـmemory.
+
+*** امتي بيحصل Replacement؟
+
+- الـOS مش بيستني لحد ما الـRAM تتملي خالص وبعد كدا يبدأ يعمل swap عشان يفضي مساحة, لا الـOS بيشتغل بشكل استباقي اول ما الـRAM usage يوصل لنسبة معينة قبل ما يتملي.
+
+- الـOS بيحدد قيمتين مهمين هما الـ High watermark والـ Low watermakr:
+
+  1. لما الـOS يلاحظ ان عدد الصفحات الفاضية بقا اقل من الـlow watermark.
+  2. بيقوم يشغل thread في الخلفية (page/swap daemon) وده مسؤول ان يطلع صفحات ويعملها swap عشان يفضي مساحة, لحد ما عدد الصفحات الفاضية يوصل للـhigh watermark.
+  3. بعد كدا الـthread بينام تاني.
+
+- الـthread ده بيعمل swap للصفحات في مجموعة مع بعد (batching) بدل ما صفحة في المرة عشان يبقي اسرع.

@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Beyond Physical Memory: Mechanisms — شرح بالعربي المصري</title>
+<style>
+  :root{
+    --bg: #1d2021;
+    --bg-soft: #282828;
+    --bg-card: #32302f;
+    --fg: #ebdbb2;
+    --fg-dim: #a89984;
+    --accent: #83a598;
+    --accent2: #b8bb26;
+    --warn: #fabd2f;
+    --red: #fb4934;
+    --border: #504945;
+    --code-bg: #1d2021;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--fg);
+    font-family:"Segoe UI","Tahoma", "Noto Sans Arabic", sans-serif;
+    line-height:1.9;
+    font-size:17px;
+  }
+  .wrap{max-width:880px;margin:0 auto;padding:40px 24px 100px;}
+
+  header.hero{
+    text-align:center;
+    padding:50px 20px 40px;
+    border-bottom:2px solid var(--border);
+    margin-bottom:40px;
+  }
+  header.hero .eyebrow{
+    color:var(--accent);
+    font-size:14px;
+    letter-spacing:1px;
+    text-transform:uppercase;
+    font-family:monospace;
+  }
+  header.hero h1{
+    font-size:32px;
+    margin:12px 0 8px;
+    color:var(--fg);
+  }
+  header.hero p{
+    color:var(--fg-dim);
+    font-size:16px;
+    margin:0;
+  }
+
+  nav.toc{
+    background:var(--bg-soft);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:20px 24px;
+    margin-bottom:40px;
+  }
+  nav.toc h2{
+    font-size:15px;
+    color:var(--accent);
+    margin:0 0 12px;
+    font-family:monospace;
+  }
+  nav.toc ol{margin:0;padding-inline-start:22px;}
+  nav.toc li{margin-bottom:6px;}
+  nav.toc a{color:var(--fg);text-decoration:none;border-bottom:1px dashed var(--border);}
+  nav.toc a:hover{color:var(--accent);}
+
+  section{margin-bottom:48px;}
+  h2.section-title{
+    font-size:24px;
+    color:var(--accent2);
+    border-inline-start:4px solid var(--accent2);
+    padding-inline-start:14px;
+    margin-bottom:18px;
+  }
+  h3{color:var(--accent);font-size:19px;margin-top:28px;}
+
+  p{margin:14px 0;}
+  strong{color:var(--warn);}
+
+  .box{
+    background:var(--bg-card);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:18px 22px;
+    margin:20px 0;
+  }
+  .box.crux{
+    border-inline-start:4px solid var(--red);
+  }
+  .box.crux .label{
+    color:var(--red);
+    font-family:monospace;
+    font-size:13px;
+    letter-spacing:1px;
+    margin-bottom:8px;
+    display:block;
+  }
+  .box.tip{
+    border-inline-start:4px solid var(--accent2);
+  }
+  .box.tip .label{
+    color:var(--accent2);
+    font-family:monospace;
+    font-size:13px;
+    margin-bottom:8px;
+    display:block;
+  }
+  .box.aside{
+    border-inline-start:4px solid var(--accent);
+  }
+  .box.aside .label{
+    color:var(--accent);
+    font-family:monospace;
+    font-size:13px;
+    margin-bottom:8px;
+    display:block;
+  }
+
+  ul,ol{margin:14px 0;padding-inline-start:24px;}
+  li{margin-bottom:8px;}
+
+  code, .mono{
+    font-family:"Fira Code",monospace;
+    background:var(--code-bg);
+    padding:2px 6px;
+    border-radius:4px;
+    color:var(--accent2);
+    font-size:0.92em;
+    direction:ltr;
+    display:inline-block;
+  }
+  pre{
+    background:var(--code-bg);
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:16px 20px;
+    overflow-x:auto;
+    direction:ltr;
+    text-align:left;
+    font-family:"Fira Code",monospace;
+    font-size:14px;
+    line-height:1.6;
+    color:#d5c4a1;
+  }
+  pre .comment{color:var(--fg-dim);}
+  pre .kw{color:var(--accent);}
+
+  table{
+    width:100%;
+    border-collapse:collapse;
+    margin:16px 0;
+    background:var(--bg-card);
+    border-radius:8px;
+    overflow:hidden;
+  }
+  th,td{
+    padding:10px 14px;
+    border-bottom:1px solid var(--border);
+    text-align:right;
+  }
+  th{background:var(--bg-soft);color:var(--accent);}
+
+  .diagram{
+    background:var(--bg-card);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:20px;
+    margin:20px 0;
+    text-align:center;
+  }
+  .diagram svg{max-width:100%;height:auto;}
+  .diagram .caption{
+    color:var(--fg-dim);
+    font-size:14px;
+    margin-top:10px;
+  }
+
+  .steps{counter-reset:step;list-style:none;padding:0;}
+  .steps li{
+    counter-increment:step;
+    position:relative;
+    padding-inline-start:44px;
+    margin-bottom:16px;
+    min-height:30px;
+  }
+  .steps li::before{
+    content:counter(step);
+    position:absolute;
+    inset-inline-start:0;
+    top:0;
+    width:30px;height:30px;
+    background:var(--accent);
+    color:var(--bg);
+    border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    font-weight:bold;
+    font-size:14px;
+  }
+
+  footer{
+    text-align:center;
+    color:var(--fg-dim);
+    font-size:14px;
+    margin-top:60px;
+    padding-top:24px;
+    border-top:1px solid var(--border);
+  }
+  footer a{color:var(--accent);}
+
+  @media (max-width:600px){
+    body{font-size:16px;}
+    header.hero h1{font-size:24px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">OSTEP — Chapter 21</div>
+  <h1>Beyond Physical Memory: Mechanisms</h1>
+  <p>إزاي نظام التشغيل بيخلينا نستخدم Memory أكبر من اللي فعلاً موجود فيزيائيًا — شرح بالعربي المصري</p>
+</header>
+
+<nav class="toc">
+  <h2>&gt; المحتويات</h2>
+  <ol>
+    <li><a href="#intro">المشكلة: الـ Address Space أكبر من الـ Memory</a></li>
+    <li><a href="#swap">Swap Space — مخزن الصفحات على الديسك</a></li>
+    <li><a href="#present">Present Bit — إزاي الـ Hardware يعرف إن الصفحة موجودة ولا لأ</a></li>
+    <li><a href="#fault">Page Fault — لما الصفحة تكون مش موجودة</a></li>
+    <li><a href="#full">لو الـ Memory كانت مليانة؟</a></li>
+    <li><a href="#flow">مسار التنفيذ الكامل (Control Flow)</a></li>
+    <li><a href="#when">إمتى الـ Replacement بيحصل فعليًا</a></li>
+    <li><a href="#summary">الخلاصة</a></li>
+  </ol>
+</nav>
+
+<section id="intro">
+  <h2 class="section-title">1. المشكلة: الـ Address Space أكبر من الـ Memory</h2>
+  <p>
+  لحد الفصل ده، كنا دايمًا مفترضين حاجة مش واقعية: إن الـ address space بتاع أي process بيبقى صغير كفاية إنه يتحط
+  بالكامل جوه الـ physical memory (الـ RAM). لكن في الواقع، إحنا عايزين نشغّل كذا process في نفس الوقت،
+  وكل واحد منهم ممكن يكون عنده address space كبير — أكبر من الـ RAM المتاحة أصلاً.
+  </p>
+  <p>
+  علشان نحل المشكلة دي، لازم نضيف مستوى جديد في الـ memory hierarchy. فبدل ما كل الصفحات (pages)
+  تبقى لازم تكون موجودة في الـ RAM، النظام هيحتاج مكان "يخبي" فيه الصفحات اللي مش مستخدمة دلوقتي.
+  المكان ده لازم يكون سعته أكبر من الـ RAM، وده معناه إنه هيبقى أبطأ بالضرورة (لو كان أسرع، كنا هنستخدمه هو نفسه كـ memory أصلًا).
+  في الأنظمة التقليدية، المكان ده هو الـ <strong>Hard Disk</strong>، وفي الأنظمة الحديثة ممكن يكون <strong>SSD</strong>.
+  </p>
+
+  <div class="box crux">
+    <span class="label">THE CRUX — جوهر المشكلة</span>
+    إزاي نظام التشغيل يقدر يستخدم جهاز تخزين أكبر وأبطأ من الـ RAM، عشان يدّي للـ process وهم (illusion)
+    إنه عنده virtual address space كبير جدًا — من غير ما الـ process يحس بأي حاجة؟
+  </div>
+
+  <p>
+  السؤال اللي ممكن يجيلك: ليه أصلًا عايزين نديله وهم address space كبير؟ الإجابة زي العادة: <strong>الراحة وسهولة الاستخدام</strong>.
+  لما يكون عندك address space كبير، مش هتقلق إن مساحة الـ memory مش هتكفي الـ data structures بتاعتك — تقدر تكتب البرنامج
+  بشكل طبيعي وتعمل allocate للذاكرة وقت ما تحتاج، من غير ما تفكر في التفاصيل دي.
+  </p>
+  <p>
+  في الأنظمة القديمة جدًا، كان فيه حاجة اسمها <span class="mono">memory overlays</span>، وكانت بتحمّل المبرمج نفسه مسؤولية
+  إنه يدخّل ويطلّع أجزاء من الكود أو الداتا يدويًا وقت ما يحتاجها. تخيل إنك قبل ما تنادي أي function، لازم إنت بنفسك
+  ترتب إنها تكون موجودة في الـ memory الأول — كابوس!
+  </p>
+
+  <p>
+  وفكرة الـ swap space دي مش بس مفيدة لبرنامج واحد كبير، لأ كمان هي اللي بتخلي فكرة <strong>multiprogramming</strong>
+  (تشغيل كذا برنامج في نفس الوقت) ممكنة أصلًا. الأجهزة القديمة كانت مستحيل تسع كل الصفحات بتاعة كل الـ processes
+  اللي شغالة في نفس اللحظة، فكان لازم يكون فيه آلية تسمح إنك تـ"طلّع" بعض الصفحات مؤقتًا.
+  </p>
+</section>
+
+<section id="swap">
+  <h2 class="section-title">2. Swap Space — مخزن الصفحات على الديسك</h2>
+  <p>
+  أول خطوة: نظام التشغيل بيحجز مساحة على الديسك مخصوصة لنقل الصفحات ذهابًا وإيابًا بين الـ RAM والديسك.
+  المساحة دي بنسميها <strong>Swap Space</strong> — سُميت كده لأننا بـ"نبدّل" (swap) الصفحات: نطلّعها من الـ memory
+  للـ swap space، أو ندخّلها من الـ swap space للـ memory. القراءة والكتابة بتتم بوحدات حجمها صفحة واحدة (page-sized units)،
+  والنظام لازم يفتكر عنوان كل صفحة على الديسك.
+  </p>
+  <p>
+  حجم الـ swap space مهم جدًا، لأنه في الآخر هو اللي بيحدد أقصى عدد صفحات ممكن يكون مستخدم في نفس اللحظة عبر كل النظام.
+  هنفترض دلوقتي إنه كبير جدًا عشان نبسّط الموضوع.
+  </p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 720 300" xmlns="http://www.w3.org/2000/svg">
+      <style>
+        .lbl{font:12px monospace;fill:#ebdbb2;}
+        .lbl-dim{font:11px monospace;fill:#a89984;}
+        .titlebox{font:13px monospace;fill:#83a598;}
+        rect.slot{stroke:#504945;stroke-width:1.5;rx:6;}
+      </style>
+      <text x="180" y="24" text-anchor="middle" class="titlebox">Physical Memory (4 frames)</text>
+      <text x="540" y="24" text-anchor="middle" class="titlebox">Swap Space (8 blocks)</text>
+
+      <!-- physical memory -->
+      <rect x="40" y="40" width="120" height="55" fill="#3c3836" class="slot"/>
+      <text x="100" y="62" text-anchor="middle" class="lbl">PFN 0</text>
+      <text x="100" y="80" text-anchor="middle" class="lbl-dim">Proc0 · VPN0</text>
+
+      <rect x="180" y="40" width="120" height="55" fill="#3c3836" class="slot"/>
+      <text x="240" y="62" text-anchor="middle" class="lbl">PFN 1</text>
+      <text x="240" y="80" text-anchor="middle" class="lbl-dim">Proc1 · VPN2</text>
+
+      <rect x="40" y="105" width="120" height="55" fill="#3c3836" class="slot"/>
+      <text x="100" y="127" text-anchor="middle" class="lbl">PFN 2</text>
+      <text x="100" y="145" text-anchor="middle" class="lbl-dim">Proc1 · VPN3</text>
+
+      <rect x="180" y="105" width="120" height="55" fill="#3c3836" class="slot"/>
+      <text x="240" y="127" text-anchor="middle" class="lbl">PFN 3</text>
+      <text x="240" y="145" text-anchor="middle" class="lbl-dim">Proc2 · VPN0</text>
+
+      <!-- swap space: 8 blocks in 2 rows of 4 -->
+      <g>
+        <rect x="380" y="40" width="80" height="45" fill="#282828" class="slot"/>
+        <text x="420" y="58" text-anchor="middle" class="lbl-dim">Block0</text>
+        <text x="420" y="74" text-anchor="middle" class="lbl-dim">Proc0·VPN1</text>
+
+        <rect x="465" y="40" width="80" height="45" fill="#282828" class="slot"/>
+        <text x="505" y="58" text-anchor="middle" class="lbl-dim">Block1</text>
+        <text x="505" y="74" text-anchor="middle" class="lbl-dim">Proc0·VPN2</text>
+
+        <rect x="550" y="40" width="80" height="45" fill="#282828" class="slot" stroke-dasharray="4"/>
+        <text x="590" y="58" text-anchor="middle" class="lbl-dim">Block2</text>
+        <text x="590" y="74" text-anchor="middle" style="font:11px monospace;fill:#b8bb26;">فاضي</text>
+
+        <rect x="635" y="40" width="80" height="45" fill="#282828" class="slot"/>
+        <text x="675" y="58" text-anchor="middle" class="lbl-dim">Block3</text>
+        <text x="675" y="74" text-anchor="middle" class="lbl-dim">Proc1·VPN0</text>
+
+        <rect x="380" y="95" width="80" height="45" fill="#282828" class="slot"/>
+        <text x="420" y="113" text-anchor="middle" class="lbl-dim">Block4</text>
+        <text x="420" y="129" text-anchor="middle" class="lbl-dim">Proc1·VPN1</text>
+
+        <rect x="465" y="95" width="80" height="45" fill="#282828" class="slot"/>
+        <text x="505" y="113" text-anchor="middle" class="lbl-dim">Block5</text>
+        <text x="505" y="129" text-anchor="middle" class="lbl-dim">Proc3·VPN0</text>
+
+        <rect x="550" y="95" width="80" height="45" fill="#282828" class="slot"/>
+        <text x="590" y="113" text-anchor="middle" class="lbl-dim">Block6</text>
+        <text x="590" y="129" text-anchor="middle" class="lbl-dim">Proc2·VPN1</text>
+
+        <rect x="635" y="95" width="80" height="45" fill="#282828" class="slot"/>
+        <text x="675" y="113" text-anchor="middle" class="lbl-dim">Block7</text>
+        <text x="675" y="129" text-anchor="middle" class="lbl-dim">Proc3·VPN1</text>
+      </g>
+
+      <text x="360" y="220" text-anchor="middle" class="lbl" style="fill:#fabd2f;">
+        Proc3 كله بره الـ RAM (كله swapped out) — يعني حاليًا مش شغال
+      </text>
+      <text x="360" y="245" text-anchor="middle" class="lbl-dim">
+        Proc0, Proc1, Proc2 كل واحد جزء منه في الـ RAM وجزء في الـ Swap
+      </text>
+    </svg>
+    <div class="caption">
+      مثال مبسّط: 4 processes بيشاركوا 4 إطارات RAM فقط، والباقي متخزن في 8 بلوكات على الـ Swap Space.
+    </div>
+  </div>
+
+  <p>
+  حاجة مهمة: الـ swap space مش المكان الوحيد اللي الصفحات بتتنقل منه وإليه على الديسك. لو إنت شغّلت برنامج
+  زي <span class="mono">ls</span> مثلًا، صفحات الكود بتاعته أصلًا موجودة في ملف الـ binary على الديسك، وبيتم تحميلها
+  للـ memory وقت التشغيل (كلها مرة واحدة، أو صفحة صفحة زي ما بيحصل في الأنظمة الحديثة). ولو النظام احتاج يفضّي مكان،
+  يقدر يعيد استخدام مساحة الصفحات دي براحته، لأنه عارف إنه لو احتاجها تاني، هيقدر يجيبها تاني من ملف الـ binary
+  نفسه من غير ما يحتاج يخزنها في الـ swap أصلًا.
+  </p>
+</section>
+
+<section id="present">
+  <h2 class="section-title">3. Present Bit — إزاي الـ Hardware يعرف إن الصفحة موجودة ولا لأ</h2>
+  <p>
+  دلوقتي عندنا مساحة على الديسك، لكن محتاجين آلية في الـ hardware والـ page table تخلينا نستخدمها فعليًا.
+  خلينا نفتكر إيه اللي بيحصل عادةً وقت ما الـ process يعمل memory reference:
+  </p>
+  <ol class="steps">
+    <li>الـ hardware بيستخرج الـ <span class="mono">VPN</span> (Virtual Page Number) من الـ virtual address.</li>
+    <li>بيدور عليه في الـ <span class="mono">TLB</span> — لو لاقاه (TLB hit)، بياخد الـ physical address على طول ويجيب الداتا. ده أسرع مسار.</li>
+    <li>لو مش موجود في الـ TLB (TLB miss)، الـ hardware بيروح للـ page table في الـ memory (باستخدام page table base register)
+      ويدور على الـ <span class="mono">PTE</span> (Page Table Entry) الخاص بالـ VPN ده.</li>
+    <li>لو الصفحة valid و present في الـ RAM، بياخد الـ PFN (Physical Frame Number) من الـ PTE، يحطه في الـ TLB،
+      ويعيد المحاولة — المرة دي هتبقى TLB hit.</li>
+  </ol>
+  <p>
+  لكن دلوقتي عايزين نسمح بإن الصفحات ممكن تكون "طالعة" على الديسك مش في الـ RAM. علشان كده بنضيف بت جديد
+  لكل PTE اسمه <strong>Present Bit</strong>:
+  </p>
+
+  <table>
+    <thead><tr><th>قيمة الـ Present Bit</th><th>المعنى</th></tr></thead>
+    <tbody>
+      <tr><td><span class="mono">1</span></td><td>الصفحة موجودة فعليًا في الـ physical memory — كل حاجة بتكمل عادي</td></tr>
+      <tr><td><span class="mono">0</span></td><td>الصفحة مش موجودة في الـ RAM دلوقتي، هي متخزنة على الديسك (في الـ swap space غالبًا)</td></tr>
+    </tbody>
+  </table>
+
+  <div class="box aside">
+    <span class="label">ملاحظة عن المصطلحات</span>
+    كلمة "Page Fault" ممكن تلخبط شوية. عمومًا هي أي حالة الوصول لـ page table بيسبب فيها "fault" من أي نوع —
+    ده ممكن يشمل نوعنا احنا (الصفحة valid بس مش present)، أو ممكن يشمل وصول غير قانوني أصلًا (illegal access).
+    الغريب إن الوصول للصفحة اللي احنا بنتكلم عنها هو وصول <em>قانوني تمامًا</em> (الصفحة فعلًا جزء من الـ address space
+    بتاع الـ process، بس مش موجودة في الـ RAM وقتها) — كان المفروض نسميها "page miss" مش "fault"، لكن التسمية
+    علقت لأن آلية التعامل معاها في الـ hardware واحدة: أي حاجة غريبة الـ hardware مش عارف يتصرف فيها، بيحول التحكم
+    مباشرة لنظام التشغيل عشان يتصرف — بالظبط زي ما بيحصل مع أي وصول غير قانوني.
+  </div>
+</section>
+
+<section id="fault">
+  <h2 class="section-title">4. Page Fault — لما الصفحة تكون مش موجودة</h2>
+  <p>
+  وقت ما الـ present bit بيبقى صفر، بيحصل <strong>Page Fault</strong>، ونظام التشغيل بيتنادى عشان يتعامل معاها
+  عن طريق قطعة كود اسمها <span class="mono">page-fault handler</span>. ده بيحصل سواء كان الـ TLB بتاعك
+  hardware-managed أو software-managed — في الحالتين، التعامل مع الـ page fault نفسه بيتم دايمًا بالسوفتوير
+  (نظام التشغيل)، حتى لو الـ hardware هو اللي بيدير الـ TLB.
+  </p>
+
+  <div class="box aside">
+    <span class="label">ليه الـ Hardware مش بيتعامل مع Page Fault بنفسه؟</span>
+    مصممي الـ hardware عمومًا مش بيثقوا في نظام التشغيل يعمل حاجات كتير، فليه هنا يثقوا فيه؟ في الحقيقة سببين:
+    الأول إن الوصول للديسك أصلًا بطيء جدًا، فحتى لو نظام التشغيل ياخد وقت وهو بيعالج الـ fault، الوقت ده تافه
+    مقارنة بوقت عملية الديسك نفسها. الثاني إن لو الـ hardware هيتعامل مع الموضوع لوحده، هيحتاج يفهم تفاصيل كتير
+    زي الـ swap space وإزاي يبعت طلبات I/O للديسك — وده تعقيد مش لازم يتحمّله. فالحل الأبسط والأكفأ: يسيبها لنظام التشغيل.
+  </div>
+
+  <p>
+  لما نظام التشغيل يستقبل الـ page fault، بيدور جوه الـ PTE بتاع الصفحة دي عشان يلاقي عنوانها على الديسك
+  (البتات اللي عادة بتتخزن فيها الـ PFN، ممكن تُستخدم لتخزين عنوان الديسك بدلًا منها لما الصفحة تكون not-present).
+  بعدين بيبعت طلب قراءة (I/O) للديسك عشان يجيب الصفحة ويحطها في الـ memory.
+  </p>
+  <p>
+  لما عملية القراءة من الديسك تخلص، نظام التشغيل بيعمل الخطوات دي:
+  </p>
+  <ol class="steps">
+    <li>يحدّث الـ page table: يخلي الـ present bit = 1 للصفحة دي.</li>
+    <li>يحدّث الـ PFN field جوه الـ PTE، عشان تشاور على مكانها الجديد في الـ memory.</li>
+    <li>يعيد تنفيذ التعليمة (instruction) اللي سببت الـ fault من الأول.</li>
+  </ol>
+  <p>
+  المحاولة الجديدة دي هتسبب TLB miss (لأن التعليمة أساسًا مكانتش موجودة فيه)، فالـ hardware هيرجع للـ page table،
+  يلاقي الصفحة present دلوقتي، يحدّث الـ TLB، ويعيد المحاولة تاني — والمرة دي هتبقى TLB hit فعليًا وهيوصل للداتا.
+  </p>
+  <p>
+  حاجة مهمة: طول ما عملية الـ I/O شغالة، الـ process بيتحط في حالة <span class="mono">blocked</span>.
+  يعني نظام التشغيل حر يشغّل processes تانية جاهزة في نفس الوقت. وده مثال تاني على إزاي
+  multiprogramming بيخلي استغلال الـ hardware أحسن — بدل ما الـ CPU يقعد فاضي وهو مستني الديسك،
+  بيشتغل على حاجة تانية.
+  </p>
+</section>
+
+<section id="full">
+  <h2 class="section-title">5. لو الـ Memory كانت مليانة؟</h2>
+  <p>
+  في الشرح اللي فات، افترضنا إن فيه مكان فاضي في الـ RAM نحط فيه الصفحة الجاية من الديسك. لكن طبعًا مش دايمًا كده —
+  الذاكرة ممكن تكون مليانة أو قريبة من كده. في الحالة دي، نظام التشغيل لازم "يطلّع" صفحة أو أكتر (يعملها swap out)
+  عشان يفضّي مكان للصفحة الجديدة. عملية اختيار "مين اللي هيطلع" دي اسمها <strong>Page-Replacement Policy</strong>.
+  </p>
+  <p>
+  الموضوع ده مهم جدًا وفيه بحث كتير حواليه، لأن اختيار الصفحة الغلط يقدر يكلف أداء البرنامج تمن غالي جدًا.
+  لو اخترت غلط، ممكن البرنامج يشتغل بسرعة الديسك بدل سرعة الـ memory — وده فرق ممكن يوصل لعشرات الآلاف من المرات
+  في الأداء (10,000× أو حتى 100,000× أبطأ). الموضوع ده مهم كفاية إن بيتخصصله فصل كامل جاي بعد الفصل ده، دلوقتي
+  يكفينا نعرف إن السياسة دي موجودة وبتشتغل فوق الآلية اللي بنشرحها هنا.
+  </p>
+</section>
+
+<section id="flow">
+  <h2 class="section-title">6. مسار التنفيذ الكامل (Control Flow)</h2>
+  <p>
+  دلوقتي نقدر نلخّص المسار الكامل اللي بيحصل وقت أي memory access. لما حد يسألك "إيه اللي بيحصل لما برنامج
+  يقرأ داتا من الذاكرة؟"، المفروض تقدر تجاوب بثقة. فيه جزئين: اللي الـ hardware بيعمله وقت الـ translation،
+  واللي نظام التشغيل بيعمله وقت الـ page fault.
+  </p>
+
+  <h3>جانب الـ Hardware</h3>
+  <p>وقت TLB miss، فيه 3 احتمالات مهمة:</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 700 260" xmlns="http://www.w3.org/2000/svg">
+      <style>
+        .node{font:13px sans-serif;fill:#ebdbb2;}
+        .nodebox{stroke-width:1.5;rx:8;}
+        .arrow{stroke:#a89984;stroke-width:1.5;fill:none;marker-end:url(#arrow);}
+      </style>
+      <defs>
+        <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L6,3 L0,6 Z" fill="#a89984"/>
+        </marker>
+      </defs>
+
+      <rect x="270" y="10" width="160" height="45" fill="#3c3836" stroke="#83a598" class="nodebox"/>
+      <text x="350" y="38" text-anchor="middle" class="node">TLB Miss</text>
+
+      <line x1="350" y1="55" x2="350" y2="80" class="arrow"/>
+
+      <rect x="270" y="80" width="160" height="45" fill="#3c3836" stroke="#a89984" class="nodebox"/>
+      <text x="350" y="108" text-anchor="middle" class="node">دور في Page Table</text>
+
+      <line x1="270" y1="102" x2="90" y2="150" class="arrow"/>
+      <line x1="350" y1="125" x2="350" y2="150" class="arrow"/>
+      <line x1="430" y1="102" x2="600" y2="150" class="arrow"/>
+
+      <rect x="10" y="150" width="160" height="60" fill="#282828" stroke="#fb4934" class="nodebox"/>
+      <text x="90" y="172" text-anchor="middle" class="node" style="fill:#fb4934;">Invalid</text>
+      <text x="90" y="192" text-anchor="middle" style="font:11px sans-serif;fill:#a89984;">إنهاء البرنامج (bug)</text>
+
+      <rect x="270" y="150" width="160" height="60" fill="#282828" stroke="#fabd2f" class="nodebox"/>
+      <text x="350" y="172" text-anchor="middle" class="node" style="fill:#fabd2f;">Valid, Not Present</text>
+      <text x="350" y="192" text-anchor="middle" style="font:11px sans-serif;fill:#a89984;">Page Fault → OS</text>
+
+      <rect x="530" y="150" width="160" height="60" fill="#282828" stroke="#b8bb26" class="nodebox"/>
+      <text x="610" y="172" text-anchor="middle" class="node" style="fill:#b8bb26;">Valid, Present</text>
+      <text x="610" y="192" text-anchor="middle" style="font:11px sans-serif;fill:#a89984;">حدّث TLB وكرر</text>
+    </svg>
+    <div class="caption">الثلاث احتمالات بعد الـ TLB miss</div>
+  </div>
+
+  <table>
+    <thead><tr><th>الحالة</th><th>اللي بيحصل</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>الصفحة <strong>valid و present</strong></td>
+        <td>الـ handler بياخد الـ PFN من الـ PTE ويحطه في الـ TLB، ويعيد التنفيذ (هيبقى TLB hit المرة دي)</td>
+      </tr>
+      <tr>
+        <td>الصفحة <strong>valid بس مش present</strong></td>
+        <td>ده الوضع اللي إحنا بنشرحه — بيتنادى الـ page-fault handler عشان يجيب الصفحة من الديسك</td>
+      </tr>
+      <tr>
+        <td>الصفحة <strong>invalid</strong> أصلًا</td>
+        <td>غالبًا bug في البرنامج — الـ hardware بيعمل trap، ونظام التشغيل عادة بينهي الـ process</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>جانب نظام التشغيل (لما الـ Page Fault يحصل)</h3>
+  <p>الخطوات اللي نظام التشغيل بيمشي عليها:</p>
+  <ol class="steps">
+    <li>يدور على physical frame فاضي يحط فيه الصفحة الجاية.</li>
+    <li>لو مفيش frame فاضي — ينادي على الـ replacement algorithm عشان يطلّع (evict) صفحة تانية ويفضّي مكان.</li>
+    <li>يبعت طلب قراءة (Disk Read) من الـ swap space لجيب الصفحة، وينام (block) لحد ما الـ I/O يخلص.</li>
+    <li>يحدّث الـ PTE: present = true, و PFN = مكانها الجديد.</li>
+    <li>يعيد تنفيذ التعليمة من الأول (اللي هتؤدي لـ TLB miss، وبعدها TLB hit، وأخيرًا الوصول الفعلي للداتا).</li>
+  </ol>
+</section>
+
+<section id="when">
+  <h2 class="section-title">7. إمتى الـ Replacement بيحصل فعليًا؟</h2>
+  <p>
+  اللي شرحناه لحد دلوقتي بيوحي إن نظام التشغيل بيستنى لحد ما الذاكرة تتملي تمامًا، وبعدين يبدأ يطلّع صفحات.
+  في الواقع، ده مش عملي خالص، وأغلب الأنظمة بتفضّل تسيب جزء صغير من الذاكرة فاضي بشكل استباقي (proactive)
+  بدل ما تستنى للحظة الأخيرة.
+  </p>
+  <p>
+  علشان كده، أغلب أنظمة التشغيل عندها حدّين: <strong>High Watermark (HW)</strong> و <strong>Low Watermark (LW)</strong>.
+  الفكرة شغالة كده:
+  </p>
+  <ol class="steps">
+    <li>لما نظام التشغيل يلاحظ إن عدد الصفحات الفاضية بقى أقل من الـ Low Watermark...</li>
+    <li>...بيشغّل thread في الخلفية (اسمه أحيانًا <span class="mono">swap daemon</span> أو <span class="mono">page daemon</span>)
+      مسؤول إنه يطلّع صفحات.</li>
+    <li>الـ thread ده بيستمر يطلّع صفحات لحد ما عدد الصفحات الفاضية يوصل للـ High Watermark.</li>
+    <li>بعد كده الـ thread بينام تاني، لحد ما يحتاج يشتغل من جديد.</li>
+  </ol>
+
+  <div class="box tip">
+    <span class="label">فايدة إنك تشتغل في الخلفية (Batching)</span>
+    لما نظام التشغيل يطلّع كذا صفحة مرة واحدة بدل واحدة واحدة، بيقدر يعمل تحسينات في الأداء — زي إنه يجمّع
+    (cluster) مجموعة صفحات مع بعض ويكتبهم على الـ swap partition دفعة واحدة. الطريقة دي بتقلل الـ seek
+    والـ rotational overhead بتاعة الديسك، وده بيحسّن الأداء بشكل ملحوظ. نفس الفكرة موجودة في أماكن تانية
+    كتير في نظام التشغيل — زي إن كتابة الملفات على الديسك بتتعمل buffered في الـ memory الأول قبل ما تتكتب فعليًا،
+    عشان تستفيد من نفس مبدأ الـ batching.
+  </div>
+
+  <p>
+  ولو حبينا نعدّل الخوارزمية اللي شرحناها فوق عشان تتماشى مع فكرة الـ background thread، هتبقى الفكرة إن الـ handler
+  بدل ما يعمل replacement بنفسه على طول، بس بيتأكد لو فيه صفحات فاضية. لو مفيش، بيبعت إشارة للـ background thread
+  إنه محتاج صفحات فاضية، وبمجرد ما الـ thread ده يفضّي مكان، بيصحّي الـ thread الأصلي تاني عشان يكمل شغله.
+  </p>
+</section>
+
+<section id="summary">
+  <h2 class="section-title">8. الخلاصة</h2>
+  <p>
+  الفصل ده قدّم لنا فكرة إننا نقدر نوصل لمساحة ذاكرة أكبر من الـ physical memory الفعلية الموجودة في الجهاز.
+  عشان ده يحصل، احتجنا:
+  </p>
+  <ul>
+    <li>إضافة <strong>Present Bit</strong> لكل PTE، يقول لنا الصفحة دي موجودة في الـ RAM ولا لأ.</li>
+    <li>آلية <strong>Page Fault Handler</strong> في نظام التشغيل، تتعامل مع الحالة لما الصفحة تكون مش present،
+      وتجيبها من الديسك للـ memory.</li>
+    <li>سياسة <strong>Page Replacement</strong> تقرر مين الصفحة اللي تتطلّع لو الذاكرة كانت مليانة (هنشرحها بالتفصيل
+      في الفصل الجاي).</li>
+  </ul>
+  <p>
+  وأهم حاجة في كل الموضوع ده: كل ده بيحصل <strong>بشفافية تامة</strong> بالنسبة للـ process — هو محسّ إنه بس
+  بيوصل لذاكرته الخاصة المتصلة (contiguous)، من غير ما يعرف إن صفحاته فعليًا متوزعة في أماكن غير متصلة
+  (non-contiguous) في الـ RAM، وإن بعضها أصلًا مش موجود فيها وبيتم جيبه من الديسك وقت الحاجة.
+  في الحالة العادية، الوصول للذاكرة بيبقى سريع، لكن في بعض الحالات ممكن ياخد كذا عملية I/O على الديسك عشان
+  يخدم طلب واحد — وده معناه إن تعليمة بسيطة زي قراءة قيمة من الذاكرة ممكن تاخد, في أسوأ الأحوال,
+  مللي ثواني كاملة (بدل نانو ثانية)، وده فرق ضخم جدًا في عالم الحاسبات.
+  </p>
+</section>
+
+<footer>
+  المصدر: <a href="https://pages.cs.wisc.edu/~remzi/OSTEP/vm-beyondphys.pdf" target="_blank" rel="noopener">
+  OSTEP — Chapter 21: Beyond Physical Memory: Mechanisms</a> (Arpaci-Dusseau) — الصفحة دي شرح وتلخيص بأسلوب حر، مش ترجمة حرفية للنص الأصلي.
+</footer>
+
+</div>
+</body>
+</html>
