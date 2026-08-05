@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>أنظمة الذاكرة الافتراضية الكاملة: VAX/VMS و Linux</title>
+<style>
+  :root {
+    --bg: #1d2021;
+    --bg-soft: #282828;
+    --fg: #ebdbb2;
+    --fg-dim: #a89984;
+    --accent: #8ec07c;
+    --accent2: #d3869b;
+    --accent3: #83a598;
+    --warn: #fabd2f;
+    --danger: #fb4934;
+    --code-bg: #32302f;
+    --border: #504945;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+    line-height: 1.9;
+    margin: 0;
+  }
+  .wrap { max-width: 900px; margin: 0 auto; padding: 40px 24px 80px; }
+  header {
+    border-bottom: 3px solid var(--accent);
+    padding-bottom: 20px;
+    margin-bottom: 36px;
+  }
+  header h1 { font-size: 1.85rem; margin: 0 0 8px; color: var(--accent); }
+  header p.sub { color: var(--fg-dim); margin: 0; font-size: 0.95rem; }
+  header p.source { color: var(--fg-dim); margin-top: 12px; font-size: 0.85rem; }
+  header p.source a { color: var(--accent2); }
+
+  .part-header {
+    background: var(--bg-soft);
+    border-right: 5px solid var(--accent3);
+    padding: 16px 22px;
+    border-radius: 8px;
+    margin: 50px 0 28px;
+  }
+  .part-header h2 { margin: 0; color: var(--accent3); font-size: 1.5rem; border: none; padding: 0; }
+  .part-header p { margin: 6px 0 0; color: var(--fg-dim); font-size: 0.9rem; }
+
+  section { margin-bottom: 36px; }
+  h3 {
+    color: var(--accent);
+    font-size: 1.2rem;
+    border-right: 4px solid var(--accent);
+    padding-right: 12px;
+    margin-bottom: 14px;
+  }
+  h4 { color: var(--accent2); font-size: 1.02rem; margin-top: 20px; }
+  p { margin: 12px 0; }
+  ul, ol { padding-right: 24px; }
+  li { margin-bottom: 8px; }
+
+  .box { background: var(--bg-soft); border: 1px solid var(--border); border-radius: 8px; padding: 18px 22px; margin: 16px 0; }
+  .box.tip { border-right: 4px solid var(--accent); }
+  .box.tip .label { color: var(--accent); font-weight: bold; display: block; margin-bottom: 8px; }
+  .box.warn { border-right: 4px solid var(--warn); }
+  .box.warn .label { color: var(--warn); font-weight: bold; display: block; margin-bottom: 8px; }
+  .box.security { border-right: 4px solid var(--danger); }
+  .box.security .label { color: var(--danger); font-weight: bold; display: block; margin-bottom: 8px; }
+
+  code { background: var(--code-bg); padding: 2px 8px; border-radius: 4px; font-family: "Courier New", monospace; color: var(--warn); direction: ltr; display: inline-block; }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 18px;
+    overflow-x: auto;
+    direction: ltr;
+    text-align: left;
+    font-family: "Courier New", monospace;
+    font-size: 0.88rem;
+    color: var(--fg);
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.92rem; }
+  th, td { border: 1px solid var(--border); padding: 8px 10px; text-align: center; }
+  th { background: var(--bg-soft); color: var(--accent); }
+  tr:nth-child(even) { background: rgba(255,255,255,0.02); }
+
+  .divider { text-align: center; color: var(--border); margin: 40px 0; letter-spacing: 8px; }
+
+  footer {
+    color: var(--fg-dim);
+    font-size: 0.85rem;
+    text-align: center;
+    margin-top: 60px;
+    border-top: 1px solid var(--border);
+    padding-top: 20px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>أنظمة الذاكرة الافتراضية الكاملة: VAX/VMS و Linux</h1>
+  <p class="sub">ملخص تعليمي بالعربي المصري — إزاي المفاهيم اللي درسناها (page tables, TLB, replacement policies) بتتجمع مع بعض في نظام حقيقي شغال</p>
+  <p class="source">
+    ملخص مبني على الفصل 23 من كتاب Operating Systems: Three Easy Pieces (OSTEP) —
+    <a href="https://pages.cs.wisc.edu/~remzi/OSTEP/vm-complete.pdf" target="_blank">النسخة الأصلية بالإنجليزي هنا</a>
+  </p>
+</header>
+
+<section>
+  <p>
+    لحد دلوقتي درسنا حاجات منفصلة: page tables، الـ TLB، سياسات استبدال الصفحات. الفصل ده بياخدنا خطوة كمان: إزاي كل الحاجات دي بتتجمع في نظام حقيقي كامل شغّال بالفعل. هناخد مثالين: نظام قديم تاريخي (VAX/VMS من أواخر السبعينات) ونظام حديث (Linux) — عشان نشوف إيه اللي اتغير وإيه اللي فضل زي ما هو.
+  </p>
+</section>
+
+<div class="part-header">
+  <h2>الجزء الأول: VAX/VMS</h2>
+  <p>نظام تاريخي من أواخر السبعينات، لكن أفكاره لسه عايشة في كل نظام حديث تقريبًا</p>
+</div>
+
+<section>
+  <p>
+    VAX/VMS كان نظام تشغيل لأجهزة VAX-11 بتاعة شركة DEC، ومن أهم مهندسيه Dave Cutler، اللي بعدين قاد تطوير Windows NT في مايكروسوفت. المشكلة الكبيرة اللي واجهها المصممين: النظام كان لازم يشتغل على مدى واسع من الأجهزة — من رخيصة لقوية جدًا، بنفس المعمارية. المشكلة دي اسمها "لعنة العمومية" (curse of generality) — أي نظام تشغيل عام (زي Linux النهاردة على الموبايل والسيرفر الضخم مع بعض) بيعاني منها.
+  </p>
+
+  <h3>مشكلة الصفحات الصغيرة جدًا (512 بايت)</h3>
+  <p>
+    الـ VAX كان بيستخدم صفحات صغيرة جدًا (512 بايت) لأسباب تاريخية، وده كان بيسبب مشكلة كبيرة: page tables خطية بسيطة كانت هتبقى ضخمة جدًا في الحجم. الحل كان بجزئين:
+  </p>
+  <ul>
+    <li><strong>تقسيم الـ address space لقسمين:</strong> P0 (فيه الكود والـ heap اللي بينمو لتحت) و P1 (فيه الـ stack اللي بينمو لفوق) — كل واحد بجدول صفحات خاص بيه، فمفيش داعي لجدول للمساحة الفاضية بينهم.</li>
+    <li><strong>حط جداول الصفحات نفسها في الذاكرة الافتراضية للكيرنل:</strong> يعني حتى جداول الصفحات ممكن تتعمل لها swap للديسك وقت الضغط على الرام.</li>
+  </ul>
+
+  <h4>شكل الـ Address Space الحقيقي</h4>
+  <p>
+    من أهم حاجة نتعلمها هنا: الـ address space الحقيقي مش بس "كود + بيانات + heap" زي الأمثلة المبسطة اللي بندرسها. في VAX/VMS كانت الصفحة رقم 0 دايمًا <strong>غير قابلة للوصول عمدًا</strong> — عشان لو عملت null pointer dereference، تاخد trap واضح بدل سلوك غامض. ده سبب ليه أي محاولة وصول لـ <code>NULL</code> بتدّيك segmentation fault دلوقتي.
+  </p>
+  <p>
+    وحاجة تانية مهمة: <strong>الكيرنل نفسه (كوده وبياناته) بيبقى ماپّد جوه كل address space لكل بروسيس</strong> (في الجزء العلوي منه، اسمه System space). ده بيسهّل حياة الكيرنل جدًا — لما بروسيس يديله pointer (مثلاً في نداء <code>write()</code>)، الكيرنل يقدر يتعامل معاه بسهولة زي أي بيانات عادية من غير ما يقلق منين جايه. بيتحمى بـ protection bits تمنع الكود العادي (user mode) من قراءة أو كتابة بيانات الكيرنل.
+  </p>
+
+  <h3>سياسة استبدال الصفحات في VMS</h3>
+  <p>
+    مفاجأة: الـ page table entry في VAX <strong>مفيهوش reference bit خالص</strong>! يعني مفيش دعم هاردوير مباشر لمعرفة إيه الصفحات المستخدمة فعلاً. الحل اللي وصلوله كان ذكي:
+  </p>
+  <div class="box tip">
+    <span class="label">💡 محاكاة الـ Reference Bit</span>
+    الفكرة: تحط كل الصفحات "ممنوع الوصول ليها" عمدًا (حتى لو أصلها مسموح). أول ما بروسيس يحاول يوصلها، تحصل trap للكيرنل، اللي بيتأكد إن الوصول ده فعلاً مسموح ويرجّع الصلاحية الطبيعية. وقت الاستبدال، الكيرنل يشوف: إيه الصفحات اللي لسه معلّمة "ممنوعة" (يبقى معناها مالمستهاش من زمان). كده استخدموا الـ protection bits الموجودة أصلاً عشان يقلّدوا reference bit مش موجود في الهاردوير.
+  </div>
+
+  <h4>Segmented FIFO — الحل العملي</h4>
+  <p>
+    بدل الـ LRU الغالي في التنفيذ، استخدموا نسخة محسّنة من FIFO اسمها <strong>Segmented FIFO</strong>:
+  </p>
+  <ul>
+    <li>كل بروسيس ليه حد أقصى من الصفحات يقدر يحتفظ بيها في الرام، اسمه <strong>Resident Set Size (RSS)</strong>.</li>
+    <li>لما بروسيس يتخطى الـ RSS بتاعه، أول صفحة دخلت (first-in) بتتشال من طابور الـ FIFO الخاص بيه.</li>
+    <li>لكن بدل ما تتشال نهائيًا فورًا، بتروح على واحدة من قايمتين عامتين مشتركة بين كل البروسيسات: <strong>قايمة الصفحات النضيفة</strong> (clean) أو <strong>قايمة الصفحات الوسخة</strong> (dirty).</li>
+    <li>لو بروسيس تاني محتاج صفحة فاضية، ياخدها من أول القايمة النضيفة العامة. <strong>لكن</strong> لو البروسيس الأصلي عمل fault على نفس الصفحة دي قبل ما حد ياخدها، يقدر يستردها من القايمة تاني — يعني بيوفر رحلة كاملة للديسك! ده اسمه "second chance".</li>
+  </ul>
+  <p>
+    كل ما القوايم العامة دي أكبر، أداء الـ Segmented FIFO بيقرب أكتر من أداء LRU الحقيقية.
+  </p>
+
+  <h4>Clustering (تجميع الكتابات)</h4>
+  <p>
+    بسبب صغر حجم الصفحة (512 بايت)، الكتابة للديسك صفحة صفحة كانت هتبقى غير فعالة جدًا (الديسكات بتحب النقلات الكبيرة). فـ VMS كانت بتجمّع مجموعة كبيرة من الصفحات "الوسخة" مع بعض وتكتبهم دفعة واحدة على الديسك. الفكرة دي بقت قياسية في كل الأنظمة الحديثة تقريبًا.
+  </p>
+
+  <h4>حيلتين ذكيتين لسه مستخدمين لحد النهاردة</h4>
+  <table>
+    <tr><th>التقنية</th><th>الفكرة</th></tr>
+    <tr>
+      <td><strong>Demand Zeroing</strong></td>
+      <td>لما بروسيس يطلب صفحة جديدة (مثلاً للـ heap)، النظام مبيعملهاش zero ولا يماپّها فعليًا في الحال — بيحط entry "ممنوعة" بس. أول ما البروسيس يحاول يستخدمها فعلاً، تحصل trap، وهنا بس النظام يعمل الـ zeroing والـ mapping الحقيقي. لو البروسيس ماستخدمهاش خالص، توفّر الشغل ده كله.</td>
+    </tr>
+    <tr>
+      <td><strong>Copy-on-Write (COW)</strong></td>
+      <td>لما تحتاج تنسخ صفحة من address space لتاني، بدل النسخ الفعلي، النظام بس بيماپّ نفس الصفحة الفيزيائية في المكانين ويحطها "read-only" في الاتنين. لو حد حاول يكتب فيها، تحصل trap، وهنا بس يتعمل نسخ فعلي (نسخة خاصة) للطرف اللي عايز يكتب. ده أساس أداء <code>fork()</code> في يونكس — لأن fork() المفروض ينسخ الـ address space كله، وده هيبقى بطيء جدًا من غير COW، خصوصًا إن أغلب الحالات بعد fork() بيتنادى عليها exec() اللي بيمحي كل حاجة تاني!</td>
+    </tr>
+  </table>
+</section>
+
+<div class="divider">• • •</div>
+
+<div class="part-header">
+  <h2>الجزء التاني: نظام Linux للذاكرة الافتراضية</h2>
+  <p>نظام حديث ومعقد، لكنه وارث كتير من أفكار VMS القديمة، مع إضافات جديدة للأداء والأمان</p>
+</div>
+
+<section>
+  <h3>تقسيم الـ Address Space</h3>
+  <p>
+    زي VMS، عنوان Linux الافتراضي مقسوم لجزء "مستخدم" (user) وجزء "كيرنل" (kernel). في Linux 32-بت، القسمة بتحصل عند العنوان <code>0xC0000000</code> (يعني تلاتة أرباع المساحة للمستخدم، والربع الأخير للكيرنل).
+  </p>
+  <p>
+    حاجة مثيرة للاهتمام: الكيرنل نفسه عنده نوعين من العناوين:
+  </p>
+  <ul>
+    <li><strong>Kernel Logical Addresses:</strong> دي العناوين "العادية" بتاعة الكيرنل (بتتاخد بـ <code>kmalloc</code>). ليها ماپّينج مباشر وثابت مع أول جزء من الذاكرة الفيزيائية — يعني لو حسبت عنوان logical، تقدر تحسب عنوانه الفيزيائي بسهولة بعملية بسيطة. ده مهم جدًا لعمليات الـ DMA (نقل بيانات مباشر من/لأجهزة الإدخال والإخراج) اللي محتاجة ذاكرة متجاورة فعليًا. الذاكرة دي كمان مينفعش تتعمل لها swap.</li>
+    <li><strong>Kernel Virtual Addresses:</strong> بتتاخد بـ <code>vmalloc</code>، ومش لازم تكون متجاورة فيزيائيًا — أسهل في التخصيص بس مش مناسبة للـ DMA. كانت مهمة جدًا في الأنظمة 32-بت عشان الكيرنل يقدر يستخدم أكتر من تقريبًا 1GB ذاكرة رغم إنه محصور في ربع المساحة بس.</li>
+  </ul>
+
+  <h3>هيكل جدول الصفحات: من 32-بت لـ 64-بت</h3>
+  <p>
+    مع الانتقال لـ 64-بت، بقى فيه 4 مستويات لجدول الصفحات (four-level page table). المثير للاهتمام: النظام لسه مش بيستخدم كل الـ 64 بت فعليًا — بس أقل 48 بت منهم. الـ 16 بت العلوية مش مستخدمة، وآخر 12 بت هي الـ offset جوه الصفحة (لصفحة 4KB)، والـ 36 بت اللي في النص دول اللي بيتقسموا على المستويات الأربعة (P1, P2, P3, P4) للترجمة.
+  </p>
+  <p>
+    ومع نمو حجوم الذاكرة أكتر، الاتجاه رايح لمستويات أكتر (5 و6 مستويات مستقبلًا) — يعني كل عملية ترجمة عنوان ممكن تحتاج تمشي في 6 خطوات بس عشان توصل للعنوان الفيزيائي!
+  </p>
+
+  <h3>الصفحات الضخمة (Huge Pages)</h3>
+  <p>
+    x86 بتدعم أحجام صفحات أكبر من الـ 4KB القياسية — زي 2MB أو حتى 1GB. الفايدة الحقيقية مش تقليل عدد الـ entries في جدول الصفحات، لكن <strong>تحسين أداء الـ TLB</strong>: لو برنامج بيستخدم ذاكرة كتير، هيملى الـ TLB بسرعة بترجمات لصفحات 4KB صغيرة، وهيحصل TLB misses كتير (بحوث بتقول إن بعض التطبيقات بتقضي 10% من دوراتها بس في التعامل مع TLB misses!). بصفحات أكبر، نفس مساحة الـ TLB بتغطي ذاكرة أكبر بكتير.
+  </p>
+  <div class="box tip">
+    <span class="label">💡 درس هندسي: التدرّج (Incrementalism)</span>
+    Linux معملتش قفزة كاملة فورًا للصفحات الضخمة — الأول أضافوا دعم صريح (يطلبه التطبيق بنفسه بـ mmap/shmget) لتطبيقات معينة زي قواعد البيانات الكبيرة، وبعدين لما الحاجة بقت أوسع، أضافوا "Transparent Huge Pages" اللي النظام بيقرر لوحده يستخدمها من غير ما التطبيق يعرف. درس مفيد: التغييرات الكبيرة أحيانًا أحسن تتاخد بخطوات صغيرة متتالية بدل قفزة واحدة جذرية.
+  </div>
+  <p>
+    التكلفة: <strong>Internal Fragmentation</strong> — لو صفحة كبيرة مش مستخدمة كلها، بتضيع مساحة كبيرة من غير فايدة. وكمان الـ swapping مع الصفحات الضخمة بيبقى أقل كفاءة.
+  </p>
+
+  <h3>Page Cache وسياسة 2Q</h3>
+  <p>
+    الـ page cache في Linux "موحّد" (unified) — بيحتفظ في مكان واحد بثلاثة أنواع بيانات: الملفات المماپّة بالذاكرة (memory-mapped)، بيانات الملفات العادية، وذاكرة الـ heap/stack بتاعت كل بروسيس (اللي مالهاش ملف مسمّى وراها، فبتتسمى anonymous memory).
+  </p>
+  <p>
+    المشكلة اللي واجهوها مع LRU العادية: لو بروسيس بيقرا ملف كبير جدًا (أكبر من الرام أو قريب من حجمها) بشكل متكرر، LRU هتطرد كل حاجة تانية من الرام عشانه — رغم إن صفحات الملف الكبير ده أصلاً مش هتتستخدم تاني قبل ما تتطرد (زي الـ looping-sequential workload اللي شفناه قبل كده). الحل: خوارزمية <strong>2Q</strong> المعدّلة:
+  </p>
+  <ul>
+    <li>صفحة لما تتلمس أول مرة، بتروح على قايمة اسمها <strong>inactive list</strong>.</li>
+    <li>لو اتلمست تاني (يعني فعلاً بتتكرر استخدامها)، بترقّى لقايمة اسمها <strong>active list</strong>.</li>
+    <li>وقت الاستبدال، المرشح للطرد بياخدوه من الـ inactive list الأول.</li>
+  </ul>
+  <p>
+    كده الملفات الكبيرة اللي بتتقرا مرة واحدة بس بتفضل محصورة في الـ inactive list، ومبتضربش الصفحات المهمة الموجودة في الـ active list.
+  </p>
+
+  <h3>الأمان: تهديدات وحلول</h3>
+  <p>
+    الفرق الأكبر بين الأنظمة الحديثة والقديمة زي VMS هو التركيز الشديد على الأمان.
+  </p>
+
+  <h4>Buffer Overflow</h4>
+  <p>
+    كود بسيط زي ده ممكن يكون كارثة أمنية:
+  </p>
+  <pre>int some_function(char *input) {
+  char dest_buffer[100];
+  strcpy(dest_buffer, input); // نسخ من غير حد أقصى!
+}</pre>
+  <p>
+    لو الـ input أطول من 100 بايت، هيكتب فوق ذاكرة تانية جنب الـ buffer — وممكن مهاجم يستغل ده عمدًا عشان يحقن كود خبيث ويشغّله، وياخد سيطرة على النظام.
+  </p>
+  <table>
+    <tr><th>الدفاع</th><th>الفكرة</th></tr>
+    <tr><td><strong>NX Bit / XD Bit</strong></td><td>يمنع تنفيذ أي كود من صفحات معينة (زي الـ stack)، فحتى لو حقن المهاجم كود، مش هيقدر يشغّله.</td></tr>
+    <tr><td><strong>ROP (كهجوم متقدم)</strong></td><td>المهاجم بيلف الدفاع ده باستخدام قطع كود موجودة أصلاً في البرنامج نفسه (اسمها gadgets)، وبيربطهم مع بعض بدل ما يحقن كود جديد.</td></tr>
+    <tr><td><strong>ASLR</strong></td><td>Address Space Layout Randomization — النظام بيوزّع الكود والـ stack والـ heap في أماكن عشوائية مختلفة كل مرة، فبيبقى صعب جدًا على المهاجم يتوقع أماكن الـ gadgets عشان يبني الهجوم.</td></tr>
+    <tr><td><strong>KASLR</strong></td><td>نفس فكرة ASLR بس على مستوى الكيرنل نفسه.</td></tr>
+  </table>
+
+  <h4>Meltdown و Spectre</h4>
+  <p>
+    هجمات حديثة اكتُشفت في 2018 بتستغل تقنية اسمها <strong>Speculative Execution</strong> — المعالج بيتوقع إيه التعليمات الجاية ويبدأ ينفذها مقدمًا عشان يزوّد السرعة، ولو التوقع غلط بيلغي الأثر. المشكلة: العملية دي بتسيب "آثار" في أماكن زي الـ CPU caches، وممكن يُستغل ده لقراءة ذاكرة كان المفروض تكون محمية تمامًا (حتى ذاكرة الكيرنل).
+  </p>
+  <div class="box security">
+    <span class="label">🔒 الحل: Kernel Page-Table Isolation (KPTI)</span>
+    بدل ما يماپّوا كل ذاكرة الكيرنل جوه كل address space (زي ما كان بيحصل من زمن VMS!)، عملولها جدول صفحات منفصل تمامًا. ده بيحسّن الأمان بس بتكلفة أداء حقيقية — تبديل جدول الصفحات مكلف. درس مهم: الأمان أحيانًا بييجي بثمن (سرعة، راحة).
+  </div>
+</section>
+
+<div class="divider">• • •</div>
+
+<section>
+  <h3>خلاصة الفصل</h3>
+  <p>
+    الفصل ده بيوضح إزاي الأفكار النظرية اللي درسناها (page tables، replacement policies، TLB) مش مجرد نظريات معزولة — دي فعلاً حجر الأساس لأنظمة حقيقية شغالة من الستينات لحد النهاردة. VMS ابتكر حلول ذكية (Segmented FIFO، Demand Zeroing، COW) رغم قيود الهاردوير، وLinux ورث كتير من الأفكار دي وأضاف طبقات جديدة للأداء (huge pages، 2Q) وللأمان (NX bit، ASLR، KPTI) استجابةً لتهديدات العصر الحديث.
+  </p>
+</section>
+
+<footer>
+  ملخص تعليمي بالعربي المصري — مبني على الفصل 23 من OSTEP (Operating Systems: Three Easy Pieces)<br>
+  المصدر الأصلي: pages.cs.wisc.edu/~remzi/OSTEP
+</footer>
+
+</div>
+</body>
+</html>

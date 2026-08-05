@@ -1603,3 +1603,111 @@ else:                              // TLB miss
   3. بعد كدا الـthread بينام تاني.
 
 - الـthread ده بيعمل swap للصفحات في مجموعة مع بعد (batching) بدل ما صفحة في المرة عشان يبقي اسرع.
+
+** Concurrency and Threads
+
+*** Thread
+
+- الـThread هي execution path مختلف داخل الـMain thread, ليها PC و registers و stack خاص بيها.
+- فيما عدا ذلك هي بتتشارك مع الـThreads الاخري في نفس الـAddress space.
+- الـContext switching بين الـthreads سريع جدا, لانه نفس الـaddress space وبالتالي نفس الـpage table, وبالتالي نفس الـTLB cache. الـexecution context بتاع الـthread بيتحفظ في الـTCB.
+- الـThreads بتقدر تتوصل مع بعض او يعني بتتشارك في نفس الـData من غير IPC.
+- الـthreads بتستخدم عشان نعمل parallelism وعشان نتفادي الانتظار اثناء اثناء وقوف البرنامج في عمليات الـIO البطئية. (overlap)
+
+**** Thread Stack
+:PROPERTIES:
+:ID:       901cc7a0-dd1b-45a1-b1e2-8faced6ce2bd
+:END:
+
+- كل thread ليها stack خاص بيها عشان يكون عندنا tracing واضح للـexecution path بتاع كل thread, وكمان عشان نخزن فيه الـlocal variables, parameters و الـreturn addresses بتاعت الـfunctions اللي الـthread بينفذها.
+
+- كل stack من دول بيتخزن في المنطقة الفاضية اللي بين الـmain stack والـheap, ولكن دي مش مشكلة لان المنطقة دي بتكون كبيرة وحتي لو عندما recursion او web server مثلا بيحجز الاف الـthreads, فا احنا ممكن نغير حجم الـstack بتاع كل thread.
+
+#+DOWNLOADED: screenshot @ 2026-08-05 19:14:18
+
+[[file:images/2026-08-05_19-14-18_screenshot.png]]
+*** Example:
+:PROPERTIES:
+:ID:       736c8a4b-c25b-4cf9-8a56-b0505cafa75e
+:END:
+
+#+begin_src C :results output
+#include <pthread.h>
+#include <stdio.h>
+
+void *say_hello(void *arg)
+{
+    printf("%s\n", (char *)arg);
+    return NULL;
+}
+
+int main()
+{
+    pthread_t t1, t2;
+
+    printf("main: begin\n");
+    pthread_create(&t1, NULL, say_hello, "worker-1: A");
+    pthread_create(&t2, NULL, say_hello, "worker-2: B");
+
+    pthread_join(t1, NULL);
+    pthread_join(t2, NULL);
+    printf("main: end\n");
+
+    return 0;
+}
+#+end_src
+
+#+RESULTS:
+: main: begin
+: worker-1: A
+: worker-2: B
+: main: end
+
+
+#+DOWNLOADED: screenshot @ 2026-08-05 20:56:29
+[[file:images/2026-08-05_20-56-29_screenshot.png]]
+
+*** Threads Problem:
+:PROPERTIES:
+:ID:       924e49ec-7d56-43dd-beb0-8003f0d5ecc3
+:END:
+
+#+begin_src C :results output
+#include <stdio.h>
+#include <pthread.h>
+
+static volatile long counter;
+
+void *bump(void *arg)
+{
+    for (long i = 0; i < 10000000; i++) {
+        counter+= 1;
+    }
+
+    return NULL;
+}
+
+int main(void)
+{
+    pthread_t t1, t2;
+
+    pthread_create(&t1, NULL, bump, NULL);
+    pthread_create(&t2, NULL, bump, NULL);
+    pthread_join(t1, NULL);
+    pthread_join(t2, NULL);
+
+    printf("counter = %ld\n", counter);
+    return 0;
+}
+#+end_src
+
+#+RESULTS:
+: counter = 10428422
+
+
+#+DOWNLOADED: screenshot @ 2026-08-05 21:41:22
+[[file:images/2026-08-05_21-41-22_screenshot.png]]
+
+- ترتيب تنفيذ الـthreads مش متوقع ومتوقف علي الـscheduler.
+- مشاركة الـData بين الـthreads بينتج عنها race conditions و indeterminate programs الـoutput بتاعها غير متوقع.
+- عشان نحل المشكلة دي كان لازم الـhardware يتدخل ويوفرلنا ادوات تساعدنا نقلل الـrace conditionsi علي الـcritical sections زي الـlocks والـcondition variables والاداوت دي بنسميها synchronization primitives.

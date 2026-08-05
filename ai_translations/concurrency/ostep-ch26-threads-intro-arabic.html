@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>الفصل 26 — Concurrency: An Introduction</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+  :root{
+    --bg0:#282828;
+    --bg1:#2d2b28;
+    --bg2:#3c3836;
+    --bg-soft:#32302f;
+    --fg:#d4be98;
+    --fg-dim:#b3a084;
+    --fg-mute:#7c6f64;
+    --orange:#e78a4e;
+    --aqua:#89b482;
+    --yellow:#d8a657;
+    --red:#ea6962;
+    --blue:#7daea3;
+    --purple:#d3869b;
+    --green:#a9b665;
+    --border:#45403d;
+  }
+  *{ box-sizing:border-box; }
+  html,body{
+    margin:0; padding:0;
+    background:var(--bg0);
+    color:var(--fg);
+    font-family:'Cairo',sans-serif;
+    line-height:1.95;
+  }
+  ::selection{ background:var(--orange); color:var(--bg0); }
+
+  .mono{ font-family:'JetBrains Mono',ui-monospace,monospace; }
+
+  /* ---- top chrome: terminal + emacs modeline vibe ---- */
+  .chrome{ position:sticky; top:0; z-index:10; }
+  .term-bar{
+    background:#1d2021; color:var(--green);
+    font-family:'JetBrains Mono',monospace; font-size:13px;
+    padding:8px 18px; direction:ltr; text-align:left;
+    border-bottom:1px solid #1b1c18;
+  }
+  .term-bar .prompt{ color:var(--aqua); }
+  .term-bar .path{ color:var(--blue); }
+  .term-bar::before{ content:"● ● ●"; color:#504945; letter-spacing:3px; float:left; margin-inline-end:14px;}
+  .mode-line{
+    background:var(--bg2); color:var(--fg-mute);
+    font-family:'JetBrains Mono',monospace; font-size:12px;
+    padding:4px 18px; direction:ltr; text-align:left;
+    display:flex; gap:18px; border-bottom:1px solid var(--border);
+  }
+  .mode-line span.tag{ color:var(--yellow); }
+
+  main.doc{ max-width:840px; margin:0 auto; padding:0 24px 80px; }
+
+  /* ---- hero ---- */
+  .hero{ padding:56px 0 30px; border-bottom:1px dashed var(--border); }
+  .hero .num{
+    font-family:'JetBrains Mono',monospace; font-weight:700;
+    font-size:15px; color:var(--fg-mute); direction:ltr; text-align:right;
+  }
+  .hero h1{
+    font-size:34px; margin:10px 0 6px; color:var(--orange); font-weight:900;
+  }
+  .hero h2{
+    font-family:'JetBrains Mono',monospace; font-weight:500; font-size:15px;
+    color:var(--fg-mute); margin:0; direction:ltr; text-align:right;
+    letter-spacing:0.5px;
+  }
+  .hero p.lede{ margin-top:22px; font-size:17px; color:var(--fg-dim); }
+
+  /* ---- org-style headings ---- */
+  .org-star{ font-family:'JetBrains Mono',monospace; color:var(--fg-mute); font-weight:700; }
+  h2.sec{
+    font-size:22px; color:var(--aqua); margin:52px 0 14px; font-weight:700;
+    display:flex; align-items:baseline; gap:8px;
+  }
+  h3.sub{
+    font-size:17px; color:var(--yellow); margin:28px 0 10px; font-weight:700;
+    display:flex; align-items:baseline; gap:8px;
+  }
+  .sec .org-star, .sub .org-star{ font-size:0.85em; }
+
+  p{ font-size:16px; color:var(--fg); margin:12px 0; }
+  strong{ color:var(--orange); font-weight:700; }
+  code.inline{
+    font-family:'JetBrains Mono',monospace; direction:ltr; unicode-bidi:embed;
+    background:var(--bg2); color:var(--yellow); padding:1px 6px; border-radius:4px; font-size:0.9em;
+  }
+  a{ color:var(--blue); }
+
+  ul, ol{ padding-inline-start:26px; }
+  li{ margin:8px 0; font-size:16px; }
+  li::marker{ color:var(--aqua); }
+
+  /* ---- callout boxes ---- */
+  .box{
+    background:var(--bg-soft); border:1px solid var(--border);
+    border-inline-start:4px solid var(--blue);
+    border-radius:6px; padding:16px 18px; margin:20px 0;
+  }
+  .box.term{ border-inline-start-color:var(--red); }
+  .box.tip{ border-inline-start-color:var(--green); }
+  .box .box-title{
+    font-family:'JetBrains Mono',monospace; font-weight:700; font-size:12.5px;
+    color:var(--fg-mute); text-transform:uppercase; letter-spacing:1px; margin-bottom:8px;
+    direction:ltr; text-align:left;
+  }
+  .glossary dt{ font-weight:700; color:var(--purple); margin-top:10px; font-family:'JetBrains Mono',monospace; direction:ltr; text-align:left; }
+  .glossary dd{ margin:4px 0 0; color:var(--fg-dim); }
+
+  /* ---- code blocks ---- */
+  pre{
+    background:#1d2021; border:1px solid var(--border); border-radius:8px;
+    padding:16px 18px; overflow-x:auto; direction:ltr; text-align:left;
+    font-family:'JetBrains Mono',monospace; font-size:13.5px; line-height:1.6;
+    margin:16px 0;
+  }
+  pre .kw{ color:var(--red); }
+  pre .ty{ color:var(--aqua); }
+  pre .fn{ color:var(--yellow); }
+  pre .str{ color:var(--green); }
+  pre .com{ color:var(--fg-mute); font-style:italic; }
+  pre .num{ color:var(--purple); }
+
+  /* ---- diagrams ---- */
+  .diagram-row{ display:flex; gap:22px; flex-wrap:wrap; justify-content:center; margin:26px 0; }
+  .stack-diagram{ width:190px; }
+  .stack-diagram .cap{ text-align:center; font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--fg-mute); margin-bottom:8px; }
+  .mem-block{
+    height:210px; border:1px solid var(--border); border-radius:6px; position:relative;
+    background:linear-gradient(var(--bg2),var(--bg2)); overflow:hidden;
+  }
+  .seg{ position:absolute; inset-inline:0; display:flex; align-items:center; justify-content:center;
+    font-family:'JetBrains Mono',monospace; font-size:11.5px; text-align:center; padding:2px 6px; }
+  .seg.code{ bottom:0; height:15%; background:var(--bg1); color:var(--fg-mute); }
+  .seg.heap{ bottom:15%; height:22%; background:#3a3b2c; color:var(--green); }
+  .seg.free{ background:repeating-linear-gradient(45deg, var(--bg2), var(--bg2) 6px, #383430 6px, #383430 12px); color:var(--fg-mute); font-size:10px; }
+  .seg.stack{ top:0; background:#3d2f2e; color:var(--red); }
+
+  table.trace{ width:100%; border-collapse:collapse; direction:ltr; text-align:left; font-family:'JetBrains Mono',monospace; font-size:12.5px; margin:14px 0; }
+  table.trace th, table.trace td{ border:1px solid var(--border); padding:6px 10px; }
+  table.trace th{ background:var(--bg2); color:var(--aqua); }
+  table.trace td.dim{ color:var(--fg-mute); }
+  table.trace tr.hl td{ background:#3a2f2c; }
+
+  .two-col{ display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  @media (max-width:640px){ .two-col{ grid-template-columns:1fr; } .hero h1{ font-size:26px; } }
+
+  footer.doc-footer{
+    margin-top:60px; padding-top:20px; border-top:1px dashed var(--border);
+    font-size:13px; color:var(--fg-mute); font-family:'JetBrains Mono',monospace;
+  }
+  footer.doc-footer a{ color:var(--fg-mute); }
+</style>
+</head>
+<body>
+
+<div class="chrome">
+  <div class="term-bar"><span class="prompt">ziad@nixpc</span>:<span class="path">~/ostep</span>$ emacs ch26-concurrency-intro.org</div>
+  <div class="mode-line">
+    <span>-:**-</span>
+    <span class="tag">ch26-concurrency-intro.org</span>
+    <span>(Org)</span>
+    <span>L1</span>
+    <span>Git:main</span>
+  </div>
+</div>
+
+<main class="doc">
+
+  <header class="hero">
+    <div class="num">CHAPTER 26 / OSTEP · Three Easy Pieces</div>
+    <h1>مقدمة في الـ Concurrency</h1>
+    <h2>threads-intro.pdf — Concurrency: An Introduction</h2>
+    <p class="lede">
+      إحنا فاهمين دلوقتي إزاي الـ OS واخد CPU واحد فيزيائي وحوّله لوهم إننا شغالين على كذا CPU (processes)،
+      وإزاي واخد الـ RAM وحوّلها لوهم إن كل process عندها address space خاص بيها لوحدها.
+      دلوقتي هنفتح باب جديد كل شيء: مش هنتكلم عن processes منفصلة، هنتكلم عن إننا نحط
+      <strong>أكتر من نقطة تنفيذ (execution)</strong> جوه الـ process الواحدة نفسها. اسم الحكاية دي: <span class="mono">thread</span>.
+    </p>
+  </header>
+
+  <h2 class="sec"><span class="org-star">*</span> 1. الـ Thread ده إيه بالظبط؟</h2>
+  <p>
+    الصورة الكلاسيكية للـ process إن عندها نقطة تنفيذ واحدة بس: program counter (PC) واحد بيتحرك من instruction
+    للتانية. الـ multi-threaded process كسرت الصورة دي: بقى عندك أكتر من PC شغال في نفس الوقت جوه نفس الـ process.
+    كل thread من دول شبه process صغيرة بجواها، بس فيه فرق جوهري واحد:
+    <strong>كل الـ threads بتشارك نفس الـ address space</strong>، يعني بتقدر توصل لنفس الـ data من غير ما تحتاج IPC
+    أو shared memory segment زي ما بيحصل بين processes منفصلة.
+  </p>
+  <p>
+    يعني state الـ thread فيها حاجات شبه الـ process: PC بتاعها، registers خاصة بيها. لو عندك T1 و T2 شغالين
+    على نفس الـ core، وقت ما الـ scheduler يقرر ينقل من T1 لـ T2، لازم يحصل context switch: يحفظ registers
+    الـ T1 (بما فيها الـ PC) في مكان اسمه <span class="mono">TCB</span> (Thread Control Block) — نفس فكرة
+    الـ PCB بتاع الـ process، بس هنا لكل thread. الفرق الكبير هنا: <strong>الـ address space فاضل زي ما هو</strong>،
+    يعني مفيش تبديل page table زي ما بيحصل بين processes — وده اللي بيخلي التبديل بين threads أرخص عادةً من
+    التبديل بين processes كاملة.
+  </p>
+
+  <h3 class="sub"><span class="org-star">**</span> كل Thread عنده Stack خاص بيه</h3>
+  <p>
+    في الـ process العادية (single-threaded)، شكل الـ address space معروف: الـ code تحت، فوقه الـ heap
+    بيكبر لفوق، وفي أعلى الـ address space الـ stack بيكبر لتحت، وفي النص مساحة فاضية. المشكلة إن الـ stack
+    هو اللي بيحمل local variables والـ return addresses وparameters بتاعت الدوال — ولو عندك أكتر من thread،
+    كل واحد فيهم لازم يكون له stack خاص بيه (وإلا هيضربوا بعض).
+  </p>
+
+  <div class="diagram-row">
+    <div class="stack-diagram">
+      <div class="cap">Single-threaded</div>
+      <div class="mem-block">
+        <div class="seg stack" style="top:0;height:28%;">Stack ↓</div>
+        <div class="seg free" style="top:28%;height:35%;"></div>
+        <div class="seg heap"></div>
+        <div class="seg code"></div>
+      </div>
+    </div>
+    <div class="stack-diagram">
+      <div class="cap">Multi-threaded (2 threads)</div>
+      <div class="mem-block">
+        <div class="seg stack" style="top:0;height:16%;">Stack (T1) ↓</div>
+        <div class="seg free" style="top:16%;height:12%;"></div>
+        <div class="seg stack" style="top:28%;height:16%;background:#3d2f38;color:var(--purple);">Stack (T2) ↓</div>
+        <div class="seg free" style="top:44%;height:19%;"></div>
+        <div class="seg heap"></div>
+        <div class="seg code"></div>
+      </div>
+    </div>
+  </div>
+  <p>
+    أي متغير محلي أو return value بيتخزن في الـ stack بتاع نفس الـ thread، وده بيتسمى أحياناً
+    <em>thread-local storage</em>. المشكلة الجانبية: الـ address space الجميلة اللي كانت مقسومة نضيف (heap
+    وstack بيكبروا من طرفين مختلفين) بقت مزدحمة شوية دلوقتي إن فيه أكتر من stack. عادةً مش مشكلة كبيرة، لأن
+    الـ stacks مش بتكبر جداً غير في حالة recursion تقيلة.
+  </p>
+
+  <h2 class="sec"><span class="org-star">*</span> 2. طيب ليه أصلاً نستخدم Threads؟</h2>
+  <p>فيه سببين رئيسيين:</p>
+
+  <div class="two-col">
+    <div class="box">
+      <div class="box-title">1 — Parallelism</div>
+      <p style="margin:0;">
+        لو عندك شغل زي جمع arrays كبيرة أو زيادة كل عنصر فيها برقم معين، وعندك أكتر من core فعلياً،
+        تقدر تقسّم الشغل ده على thread لكل core. الحكاية دي اسمها <em>parallelization</em>: تحويل برنامج
+        single-threaded لبرنامج بيستغل كل الـ CPUs المتاحة، وده أسهل طريقة تسرّع بيها البرنامج على الهاردوير
+        الحديث.
+      </p>
+    </div>
+    <div class="box">
+      <div class="box-title">2 — تفادي الانتظار على I/O</div>
+      <p style="margin:0;">
+        لو thread واحد واقف مستني I/O (disk، network، حتى page fault)، مفيش داعي كل البرنامج يقف.
+        الـ scheduler يقدر يشغّل thread تاني عنده شغل مفيد يعمله بدل ما الـ CPU يقعد فاضي. عشان كده
+        السيرفرات (web servers، databases) بتعتمد على threads بشكل تقيل — بتخلي الانتظار على I/O يتداخل
+        (overlap) مع شغل مفيد تاني.
+      </p>
+    </div>
+  </div>
+  <p>
+    ملحوظة مهمة: تقدر تعمل نفس الحاجتين دول بـ processes منفصلة بدل threads. بس الـ threads بتشارك
+    address space واحد، يعني مشاركة الـ data بينهم سهلة جداً (متغير global، pointer، إلخ) من غير أي تعقيد.
+    الـ processes أنسب لما الشغل يكون منطقياً منفصل تماماً وميحتاجش يشارك structures في الـ memory.
+  </p>
+
+  <h2 class="sec"><span class="org-star">*</span> 3. تجربة: إنشاء Threads فعلياً</h2>
+  <p>
+    خلينا نشوف مثال بسيط: برنامج بينشئ thread-ين، كل واحد بيطبع حرف مختلف.
+  </p>
+  <pre><span class="kw">#include</span> <span class="str">&lt;pthread.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;stdio.h&gt;</span>
+
+<span class="ty">void</span> *<span class="fn">say_hello</span>(<span class="ty">void</span> *arg) {
+    printf(<span class="str">"%s\n"</span>, (<span class="ty">char</span> *) arg);
+    <span class="kw">return</span> <span class="num">NULL</span>;
+}
+
+<span class="ty">int</span> <span class="fn">main</span>(<span class="ty">void</span>) {
+    pthread_t t1, t2;
+
+    printf(<span class="str">"main: begin\n"</span>);
+    pthread_create(&amp;t1, <span class="num">NULL</span>, say_hello, <span class="str">"worker-1: A"</span>);
+    pthread_create(&amp;t2, <span class="num">NULL</span>, say_hello, <span class="str">"worker-2: B"</span>);
+
+    <span class="com">// join = استنى الـ thread ده لحد ما يخلص</span>
+    pthread_join(t1, <span class="num">NULL</span>);
+    pthread_join(t2, <span class="num">NULL</span>);
+    printf(<span class="str">"main: end\n"</span>);
+    <span class="kw">return</span> <span class="num">0</span>;
+}</pre>
+  <p>
+    <span class="mono">pthread_create</span> بتقول للـ OS: "ابدأ تنفيذ الدالة دي في thread جديد، وده الـ argument
+    اللي هتاخده". من لحظة الإنشاء، ممكن الـ thread الجديد يشتغل فوراً، أو يفضل واقف في حالة "ready" لحد ما
+    الـ scheduler يديله فرصة. <span class="mono">pthread_join</span> بتوقّف الـ thread اللي نادى عليها (هنا main)
+    لحد ما الـ thread المطلوب يخلص شغله.
+  </p>
+  <p>
+    الفكرة إن إنشاء thread شبه استدعاء دالة (function call)، بس بدل ما تنفّذها وترجع، الـ OS بيفتح لك مسار
+    تنفيذ جديد ومستقل تماماً — ممكن يشتغل قبل ما <span class="mono">pthread_create</span> ترجع، وممكن بعدها بكتير.
+    اللي بيحصل بعد كده بالظبط في إيد الـ scheduler، مش في إيدك.
+  </p>
+
+  <div class="box tip">
+    <div class="box-title">Non-determinism من أول سطر</div>
+    <p style="margin:0 0 10px;">
+      حتى المثال البسيط ده عنده أكتر من ترتيب تنفيذ ممكن. مثلاً، ممكن main تنشئ T1 وT2 الاتنين الأول
+      وبعدين تستناهم، أو ممكن T1 يشتغل ويطبع "A" فوراً وهو لسه بيتعمله create قبل ما T2 حتى تتولد.
+      وممكن كمان B تظهر قبل A لو الـ scheduler اختار يشغّل T2 الأول رغم إنه اتنشأ بعد T1 — مفيش أي ضمان
+      إن اللي اتنشأ الأول هيشتغل الأول.
+    </p>
+    <table class="trace">
+      <tr><th>main</th><th>Thread 1</th><th>Thread 2</th></tr>
+      <tr><td>prints "main: begin"</td><td class="dim">—</td><td class="dim">—</td></tr>
+      <tr><td>creates T1, T2</td><td class="dim">—</td><td class="dim">—</td></tr>
+      <tr><td>waits (join T1)</td><td>runs → prints "A"</td><td class="dim">—</td></tr>
+      <tr><td>waits (join T2)</td><td class="dim">done</td><td>runs → prints "B"</td></tr>
+      <tr><td>prints "main: end"</td><td class="dim">—</td><td class="dim">done</td></tr>
+    </table>
+    <p style="margin:10px 0 0;">
+      دي ترتيبة واحدة بس من عدة ترتيبات صحيحة كلها ممكنة لنفس الكود بالظبط. وده أول درس مهم: مع الـ concurrency،
+      "إيه اللي هيحصل امتى" بقى سؤال مالوش إجابة واحدة ثابتة.
+    </p>
+  </div>
+
+  <h2 class="sec"><span class="org-star">*</span> 4. المشكلة الحقيقية: مشاركة Data بين Threads</h2>
+  <p>
+    المثال اللي فات كان كل thread شغال لوحده من غير ما يلمس حاجة مشتركة. لو دلوقتي جبنا thread-ين
+    الاتنين بيعدّلوا نفس المتغير الـ global، إيه اللي هيحصل؟
+  </p>
+  <pre><span class="ty">static</span> <span class="ty">volatile</span> <span class="ty">long</span> counter = <span class="num">0</span>;
+
+<span class="ty">void</span> *<span class="fn">bump</span>(<span class="ty">void</span> *arg) {
+    <span class="kw">for</span> (<span class="ty">long</span> i = <span class="num">0</span>; i &lt; <span class="num">10000000</span>; i++)
+        counter = counter + <span class="num">1</span>;
+    <span class="kw">return</span> <span class="num">NULL</span>;
+}
+
+<span class="ty">int</span> <span class="fn">main</span>(<span class="ty">void</span>) {
+    pthread_t t1, t2;
+    pthread_create(&amp;t1, <span class="num">NULL</span>, bump, <span class="num">NULL</span>);
+    pthread_create(&amp;t2, <span class="num">NULL</span>, bump, <span class="num">NULL</span>);
+    pthread_join(t1, <span class="num">NULL</span>);
+    pthread_join(t2, <span class="num">NULL</span>);
+    printf(<span class="str">"counter = %ld\n"</span>, counter); <span class="com">// المفروض 20000000</span>
+    <span class="kw">return</span> <span class="num">0</span>;
+}</pre>
+  <p>
+    كل thread بيزوّد <span class="mono">counter</span> بـ 1، عشر مليون مرة، فالنتيجة المتوقعة
+    <strong>20,000,000</strong>. لو شغّلته، هتلاقي أحياناً بيطلعلك الرقم صح، وأحياناً تانية بيطلعلك رقم غلط —
+    ومش نفس الرقم الغلط كل مرة! نفس الكود بالظبط، نفس الـ input، ونتايج مختلفة كل تشغيلة. السؤال: ليه؟
+  </p>
+
+  <h2 class="sec"><span class="org-star">*</span> 5. جوهر المشكلة: الـ Scheduling الغير متحكم فيه</h2>
+  <p>
+    السبب إن السطر البسيط <span class="mono">counter = counter + 1</span> مش instruction واحدة على مستوى
+    الـ CPU. الـ compiler بيحوّله لتلاتة instructions منفصلة (x86 تقريباً):
+  </p>
+  <pre>mov  counter, %eax    <span class="com">// حمّل قيمة counter في register</span>
+add  $1, %eax          <span class="com">// زوّد الـ register بواحد</span>
+mov  %eax, counter     <span class="com">// رجّع القيمة من الـ register لـ counter</span></pre>
+  <p>
+    ولو الـ interrupt (زي timer interrupt بتاع الـ scheduler) حصل في نص الطريق ده، هتحصل كارثة.
+    خلينا نتخيل <span class="mono">counter = 50</span> ونتابع T1 وT2 خطوة بخطوة:
+  </p>
+
+  <table class="trace">
+    <tr><th>الوقت</th><th>Thread 1</th><th>Thread 2</th><th>counter في الـ RAM</th></tr>
+    <tr><td>t0</td><td class="dim">قبل ما يبدأ</td><td class="dim">—</td><td>50</td></tr>
+    <tr><td>t1</td><td>mov → eax=50</td><td class="dim">—</td><td>50</td></tr>
+    <tr><td>t2</td><td>add → eax=51</td><td class="dim">—</td><td>50</td></tr>
+    <tr class="hl"><td>t3</td><td colspan="2" style="text-align:center;color:var(--red);">⚡ timer interrupt — context switch لـ T2</td><td>50</td></tr>
+    <tr><td>t4</td><td class="dim">(مجمد، eax=51 محفوظة في TCB)</td><td>mov → eax=50</td><td>50</td></tr>
+    <tr><td>t5</td><td class="dim">—</td><td>add → eax=51</td><td>50</td></tr>
+    <tr><td>t6</td><td class="dim">—</td><td>mov → يخزّن 51</td><td><strong>51</strong></td></tr>
+    <tr class="hl"><td>t7</td><td colspan="2" style="text-align:center;color:var(--red);">⚡ context switch يرجع لـ T1</td><td>51</td></tr>
+    <tr><td>t8</td><td>يكمل: mov → يخزّن eax المحفوظة (51)</td><td class="dim">—</td><td><strong>51</strong></td></tr>
+  </table>
+  <p>
+    النتيجة النهائية: <span class="mono">counter = 51</span>، رغم إن فيه زيادتين اتنفذوا فعلاً! T2 خزّن 51 ثم
+    T1 رجع خزّن نفس القيمة القديمة اللي كانت في register بتاعه (51 برضو) فوق القيمة اللي T2 حطها — يعني
+    زيادة T2 "ضاعت" فعلياً. ده اسمه <strong>lost update</strong>. بما إن التوقيت بتاع الـ interrupt عشوائي،
+    كل تشغيلة ممكن تضيع فيها عدد مختلف من الزيادات، وعشان كده كل مرة بتطلع نتيجة مختلفة.
+  </p>
+
+  <div class="box term">
+    <div class="box-title">المصطلحات الأساسية</div>
+    <dl class="glossary">
+      <dt>Critical Section</dt>
+      <dd>أي جزء من الكود بيلمس shared resource (متغير، data structure) ولازم ميتنفذش من أكتر من thread في نفس الوقت.</dd>
+      <dt>Race Condition (Data Race)</dt>
+      <dd>لما أكتر من thread يدخلوا الـ critical section في نفس الفترة تقريباً، والنتيجة تبقى محتاجة لتوقيت معين عشان تطلع صح.</dd>
+      <dt>Indeterminate Program</dt>
+      <dd>برنامج فيه race condition واحدة أو أكتر، فالـ output بتاعه بيتغير من تشغيلة للتانية — عكس الحتمية (determinism) اللي متعودين عليها من الكمبيوتر.</dd>
+      <dt>Mutual Exclusion</dt>
+      <dd>الخاصية اللي بنتمناها: لو thread داخل الـ critical section، الباقي يتمنعوا من الدخول لحد ما يخرج.</dd>
+    </dl>
+  </div>
+  <p style="font-size:14px;color:var(--fg-mute);">
+    (المصطلحات دي أصلها من إدسخر دايكسترا Edsger Dijkstra، اللي حط أساسات الموضوع ده من الستينات وأخد
+    Turing Award على شغله في المجال.)
+  </p>
+
+  <h2 class="sec"><span class="org-star">*</span> 6. اللي إحنا محتاجينه: Atomicity</h2>
+  <p>
+    الحل النظري السهل: لو الهاردوير كان بيدّينا instruction واحدة سحرية زي
+    <span class="mono">memory-add address, value</span> بتضمن إنها تتنفذ <em>atomically</em> — يعني كوحدة
+    واحدة، إما تتنفذ بالكامل أو محصلش حاجة خالص، من غير أي حالة نص-نص ممكن الـ interrupt يمسكها — المشكلة
+    كانت هتتحل من نفسها. بس ده مش عملي: مينفعش نطلب من الهاردوير instruction مخصصة لكل عملية معقدة (زي تحديث
+    B-tree كامل مثلاً).
+  </p>
+  <p>
+    فبدل كده، الهاردوير بيدّينا مجموعة صغيرة من الـ atomic instructions العامة (هنشوفها بالتفصيل في الفصول
+    الجاية)، والـ OS مع المبرمج بيبنوا فوقها حاجة اسمها <strong>synchronization primitives</strong> — زي
+    الـ locks — عشان نقدر نلف أي critical section عايزينها ونضمن إن thread واحد بس يدخلها في كل مرة.
+  </p>
+
+  <h2 class="sec"><span class="org-star">*</span> 7. مشكلة تانية غير الـ Race: الانتظار</h2>
+  <p>
+    مش كل تفاعل بين threads بيكون سباق على data مشتركة. أحياناً thread محتاج ببساطة <strong>يستنى</strong>
+    thread تاني يخلص حاجة معينة قبل ما يكمل — زي process بيعمل disk I/O وبيتحط "نايم" لحد ما الـ I/O يخلص،
+    وبعدين لازم حد "يصحّيه". الآلية دي (sleep / wake up) هتتغطى في فصل تاني عن الـ condition variables.
+  </p>
+
+  <h2 class="sec"><span class="org-star">*</span> 8. طب ليه ندرس الموضوع ده في مادة OS؟</h2>
+  <p>
+    الإجابة باختصار: <strong>تاريخياً</strong>، الـ OS نفسه كان أول برنامج concurrent في الدنيا. الـ kernel
+    بيتقاطع مع نفسه طول الوقت بسبب الـ interrupts اللي بتحصل في أي لحظة، وبرضو لازم يحدّث structures داخلية
+    مشتركة (page tables، process lists، bitmaps بتاعة تخصيص المساحة، inodes بتاعة الملفات) بأمان.
+  </p>
+  <p>
+    مثال بسيط: process-ين بيحاولوا يعملوا append لنفس الملف في نفس الوقت — كل واحد لازم يحجز block جديد،
+    يسجّله في inode الملف، ويحدّث حجم الملف. لو مفيش synchronization صح على الخطوات دي، هتحصل نفس مشكلة الـ
+    lost update اللي شفناها فوق، بس جوه الـ kernel نفسه. عشان كده أي structure جوه الـ kernel لازم توصله
+    بحذر شديد وبأدوات synchronization صحيحة.
+  </p>
+
+  <h2 class="sec"><span class="org-star">*</span> 9. خلاصة واللي جاي</h2>
+  <p>
+    الفصل ده وضع المشكلة، مش الحل. اللي اتعلمناه:
+  </p>
+  <ul>
+    <li>الـ thread = نقطة تنفيذ إضافية جوه process واحدة، بتشارك address space لكن ليها stack وregisters خاصة.</li>
+    <li>بنستخدم threads عشان الـ parallelism وعشان نتفادى وقوف البرنامج على I/O بطيئة.</li>
+    <li>ترتيب تنفيذ الـ threads مش متوقع أبداً — الـ scheduler هو اللي بيقرر.</li>
+    <li>مشاركة data من غير حماية بتنتج race conditions وnتايج indeterminate (زي مثال الـ counter).</li>
+    <li>الحل جاي من فكرة الـ atomicity: الهاردوير + الـ OS بيقدموا synchronization primitives (locks، وبعدين condition variables) نبني بيها critical sections آمنة.</li>
+  </ul>
+  <p>
+    الفصول الجاية في الكتاب هتبني على الأساس ده: إزاي نعمل locks فعلياً (باستخدام test-and-set/compare-and-swap
+    وغيرها)، وإزاي نستخدم condition variables للـ sleep/wake coordination. فيه كمان homework تفاعلي في الكتاب
+    اسمه <span class="mono">x86.py</span> بيسيبك تجرّب بنفسك ترتيبات مختلفة للـ interrupts وتشوف تأثيرها على
+    برامج زي دي — يستاهل تجربة لو حابب تلعب بالمفهوم بإيدك.
+  </p>
+
+  <footer class="doc-footer">
+    <p>المصدر: Operating Systems: Three Easy Pieces — Remzi H. &amp; Andrea C. Arpaci-Dusseau،
+    Chapter 26 "Concurrency: An Introduction".<br>
+    الأصل: <a href="https://pages.cs.wisc.edu/~remzi/OSTEP/threads-intro.pdf" target="_blank">pages.cs.wisc.edu/~remzi/OSTEP/threads-intro.pdf</a><br>
+    شرح وتلخيص بالعربي المصري — مش ترجمة حرفية.</p>
+  </footer>
+
+</main>
+</body>
+</html>
