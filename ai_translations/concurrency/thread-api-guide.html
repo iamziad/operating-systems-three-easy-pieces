@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Thread API — شرح بالعربي</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:            #282828;
+    --bg-soft:       #32302f;
+    --bg-card:       #3c3836;
+    --border:        #4f4640;
+    --fg:            #d4be98;
+    --fg-dim:        #a89984;
+    --comment:       #928374;
+    --aqua:          #89b482;
+    --yellow:        #d8a657;
+    --red:           #ea6962;
+    --blue:          #7daea3;
+    --purple:        #d3869b;
+    --orange:        #e78a4e;
+  }
+
+  *{ box-sizing:border-box; }
+
+  body{
+    background:var(--bg);
+    color:var(--fg);
+    font-family:'Tajawal', sans-serif;
+    margin:0;
+    line-height:1.9;
+    font-size:17px;
+  }
+
+  .wrap{
+    max-width:880px;
+    margin:0 auto;
+    padding:48px 28px 100px;
+  }
+
+  /* ===== Header ===== */
+  .kicker{
+    font-family:'JetBrains Mono', monospace;
+    color:var(--comment);
+    font-size:13px;
+    letter-spacing:1px;
+    direction:ltr;
+    text-align:left;
+    margin-bottom:10px;
+  }
+  h1{
+    font-size:2.5rem;
+    font-weight:900;
+    margin:0 0 6px;
+    color:var(--fg);
+  }
+  h1 span{ color:var(--aqua); }
+  .subtitle{
+    color:var(--fg-dim);
+    font-size:1.05rem;
+    margin-bottom:28px;
+  }
+
+  .notice{
+    background:var(--bg-soft);
+    border-inline-start:4px solid var(--yellow);
+    padding:14px 18px;
+    border-radius:6px;
+    font-size:14.5px;
+    color:var(--fg-dim);
+    margin-bottom:40px;
+  }
+  .notice b{ color:var(--yellow); }
+
+  /* ===== crux box ===== */
+  .crux{
+    background:linear-gradient(135deg, rgba(137,180,130,0.12), rgba(125,174,163,0.08));
+    border:1px solid var(--aqua);
+    border-radius:10px;
+    padding:20px 22px;
+    margin:30px 0 40px;
+  }
+  .crux .label{
+    font-family:'JetBrains Mono', monospace;
+    color:var(--aqua);
+    font-size:12px;
+    letter-spacing:2px;
+    direction:ltr;
+    text-align:left;
+    margin-bottom:8px;
+  }
+  .crux p{ margin:0; color:var(--fg); font-weight:500; }
+
+  /* ===== sections ===== */
+  section{ margin:52px 0; }
+  .sec-num{
+    font-family:'JetBrains Mono', monospace;
+    color:var(--comment);
+    font-size:13px;
+    direction:ltr;
+    text-align:left;
+  }
+  h2{
+    font-size:1.65rem;
+    color:var(--fg);
+    border-bottom:2px solid var(--border);
+    padding-bottom:10px;
+    margin:4px 0 20px;
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  h2 .dot{ color:var(--orange); }
+  h3{
+    color:var(--blue);
+    font-size:1.15rem;
+    margin:26px 0 10px;
+  }
+  p{ margin:12px 0; }
+  ul, ol{ padding-inline-start:22px; }
+  li{ margin:8px 0; }
+
+  code{
+    font-family:'JetBrains Mono', monospace;
+    background:var(--bg-soft);
+    color:var(--yellow);
+    padding:2px 6px;
+    border-radius:4px;
+    font-size:0.88em;
+    direction:ltr;
+    display:inline-block;
+  }
+
+  pre{
+    background:#1d2021;
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:18px 20px;
+    overflow-x:auto;
+    margin:16px 0;
+    direction:ltr;
+    text-align:left;
+  }
+  pre code{
+    background:none;
+    padding:0;
+    color:var(--fg);
+    font-size:14px;
+    line-height:1.7;
+    white-space:pre;
+  }
+  .tok-kw{ color:var(--red); }
+  .tok-type{ color:var(--blue); }
+  .tok-fn{ color:var(--aqua); }
+  .tok-str{ color:var(--yellow); }
+  .tok-comment{ color:var(--comment); font-style:italic; }
+
+  .card-grid{
+    display:grid;
+    grid-template-columns:repeat(2, 1fr);
+    gap:14px;
+    margin:18px 0;
+  }
+  @media(max-width:640px){ .card-grid{ grid-template-columns:1fr; } }
+
+  .param-card{
+    background:var(--bg-card);
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:14px 16px;
+  }
+  .param-card .name{
+    font-family:'JetBrains Mono', monospace;
+    color:var(--purple);
+    font-weight:700;
+    direction:ltr;
+    text-align:left;
+    display:block;
+    margin-bottom:6px;
+  }
+  .param-card .desc{ font-size:14.5px; color:var(--fg-dim); }
+
+  .warn{
+    background:rgba(234,105,98,0.1);
+    border:1px solid var(--red);
+    border-radius:8px;
+    padding:16px 18px;
+    margin:20px 0;
+  }
+  .warn .head{
+    color:var(--red);
+    font-weight:700;
+    margin-bottom:6px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+
+  .tip{
+    background:rgba(216,166,87,0.08);
+    border-inline-start:4px solid var(--yellow);
+    border-radius:6px;
+    padding:14px 18px;
+    margin:20px 0;
+    font-size:15px;
+  }
+
+  .guideline{
+    display:flex;
+    gap:14px;
+    background:var(--bg-card);
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:14px 16px;
+    margin:10px 0;
+  }
+  .guideline .num{
+    font-family:'JetBrains Mono', monospace;
+    color:var(--aqua);
+    font-weight:700;
+    min-width:26px;
+  }
+  .guideline .txt b{ color:var(--fg); }
+  .guideline .txt{ color:var(--fg-dim); font-size:14.5px; }
+
+  footer{
+    margin-top:70px;
+    padding-top:20px;
+    border-top:1px solid var(--border);
+    color:var(--comment);
+    font-size:13px;
+    font-family:'JetBrains Mono', monospace;
+    direction:ltr;
+    text-align:left;
+  }
+
+  table{
+    width:100%;
+    border-collapse:collapse;
+    margin:16px 0;
+    font-size:14.5px;
+  }
+  th, td{
+    border:1px solid var(--border);
+    padding:10px 12px;
+    text-align:right;
+  }
+  th{
+    background:var(--bg-soft);
+    color:var(--aqua);
+    font-family:'JetBrains Mono', monospace;
+    font-size:12.5px;
+  }
+  td code{ font-size:13px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="kicker">OSTEP · CHAPTER 27 · INTERLUDE</div>
+  <h1>واجهة الـ <span>Thread API</span></h1>
+  <p class="subtitle">شرح مبسط بالعربي المصري لأهم دوال الـ POSIX threads: الإنشاء، الانتظار، الأقفال، وMonitor variables.</p>
+
+  <div class="notice">
+    <b>ملحوظة:</b> ده مش ترجمة حرفية للفصل من الكتاب — ده شرح وتلخيص بأسلوبي للأفكار والدوال الأساسية اللي جايه في الفصل، عشان أحافظ على حقوق النشر بتاعة الكتاب الأصلي. لو عايز تقرأ النص الأصلي كامل، هو متاح مجانًا من نفس اللينك اللي بعتهولي.
+  </div>
+
+  <div class="crux">
+    <div class="label">THE CRUX</div>
+    <p>السؤال اللي الفصل ده بيجاوب عليه: إيه الـ interface اللي المفروض الـ OS يقدمه عشان تقدر تعمل threads وتتحكم فيهم، وإزاي التصميم ده يبقى سهل الاستخدام ومفيد في نفس الوقت؟</p>
+  </div>
+
+  <!-- ============ 1 ============ -->
+  <section>
+    <div class="sec-num">27.1</div>
+    <h2><span class="dot">●</span> إنشاء الـ Threads</h2>
+    <p>أول حاجة محتاجها عشان تكتب برنامج multi-threaded هي إنك تعرف تعمل thread جديد. في POSIX الموضوع بسيط، فيه دالة واحدة اسمها <code>pthread_create</code>:</p>
+
+    <pre><code><span class="tok-kw">#include</span> <span class="tok-str">&lt;pthread.h&gt;</span>
+
+<span class="tok-type">int</span> <span class="tok-fn">pthread_create</span>(
+    pthread_t          <span class="tok-kw">*</span>thread,
+    <span class="tok-kw">const</span> pthread_attr_t <span class="tok-kw">*</span>attr,
+    <span class="tok-type">void</span>            <span class="tok-kw">*</span>(<span class="tok-kw">*</span>start_routine)(<span class="tok-type">void</span><span class="tok-kw">*</span>),
+    <span class="tok-type">void</span>            <span class="tok-kw">*</span>arg
+);</code></pre>
+
+    <p>الدالة دي بتاخد 4 حاجات:</p>
+
+    <div class="card-grid">
+      <div class="param-card">
+        <span class="name">thread</span>
+        <span class="desc">pointer لـ struct نوعها <code>pthread_t</code>. ده الـ "مقبض" (handle) اللي هتستخدمه بعد كده عشان تتعامل مع الـ thread ده — مثلًا تستناه لما يخلص.</span>
+      </div>
+      <div class="param-card">
+        <span class="name">attr</span>
+        <span class="desc">إعدادات اختيارية للـ thread (زي حجم الـ stack أو أولوية الـ scheduling). في 99% من الحالات مبتحتاجهاش، فبتبعت <code>NULL</code> وخلاص.</span>
+      </div>
+      <div class="param-card">
+        <span class="name">start_routine</span>
+        <span class="desc">ده function pointer — يعني اسم الدالة اللي الـ thread الجديد هيبدأ ينفذها. لازم تاخد <code>void*</code> وترجع <code>void*</code>.</span>
+      </div>
+      <div class="param-card">
+        <span class="name">arg</span>
+        <span class="desc">القيمة اللي هتتبعت لـ <code>start_routine</code> لما الـ thread يبدأ شغل. عشان كده نوعها <code>void*</code> — تقدر تبعت أي نوع بيانات عايزه.</span>
+      </div>
+    </div>
+
+    <p>ليه <code>void*</code> بالذات؟ عشان تقدر تبعت أي نوع arguments، وترجع أي نوع نتيجة، من غير ما الدالة تكون مقيدة بنوع بيانات معين.</p>
+
+    <h3>مثال</h3>
+    <p>لو عايز تبعت أكتر من قيمة، بتلمهم في struct واحدة وتبعت pointer ليها:</p>
+
+    <pre><code><span class="tok-kw">typedef struct</span> {
+    <span class="tok-type">int</span> num1;
+    <span class="tok-type">int</span> num2;
+} <span class="tok-type">task_args_t</span>;
+
+<span class="tok-type">void</span> <span class="tok-kw">*</span><span class="tok-fn">worker</span>(<span class="tok-type">void</span> <span class="tok-kw">*</span>arg) {
+    task_args_t <span class="tok-kw">*</span>a <span class="tok-kw">=</span> (task_args_t <span class="tok-kw">*</span>) arg;
+    <span class="tok-fn">printf</span>(<span class="tok-str">"%d %d\n"</span>, a<span class="tok-kw">-></span>num1, a<span class="tok-kw">-></span>num2);
+    <span class="tok-kw">return</span> <span class="tok-kw">NULL</span>;
+}
+
+<span class="tok-type">int</span> <span class="tok-fn">main</span>() {
+    pthread_t t;
+    task_args_t args <span class="tok-kw">=</span> { <span class="tok-str">10</span>, <span class="tok-str">20</span> };
+
+    <span class="tok-fn">pthread_create</span>(<span class="tok-kw">&amp;</span>t, <span class="tok-kw">NULL</span>, worker, <span class="tok-kw">&amp;</span>args);
+    <span class="tok-comment">// ...</span>
+}</code></pre>
+
+    <p>بمجرد ما بتنادي <code>pthread_create</code>، بقى عندك entity تانية شغالة فعليًا — ليها الـ call stack بتاعها، بس بتشارك نفس الـ address space مع باقي الـ threads في البرنامج.</p>
+  </section>
+
+  <!-- ============ 2 ============ -->
+  <section>
+    <div class="sec-num">27.2</div>
+    <h2><span class="dot">●</span> استنى الـ Thread يخلص</h2>
+    <p>لو عايز تستنى thread لحد ما يخلص شغله، تستخدم <code>pthread_join</code>:</p>
+
+    <pre><code><span class="tok-type">int</span> <span class="tok-fn">pthread_join</span>(pthread_t thread, <span class="tok-type">void</span> <span class="tok-kw">**</span>value_ptr);</code></pre>
+
+    <table>
+      <tr><th>الباراميتر</th><th>وظيفته</th></tr>
+      <tr><td><code>thread</code></td><td>الـ handle بتاع الـ thread اللي عايز تستناه (نفس الـ variable اللي عبيتها في <code>pthread_create</code>)</td></tr>
+      <tr><td><code>value_ptr</code></td><td>pointer للمكان اللي عايز ترجع فيه القيمة اللي الـ thread رجعها. لاحظ إنه <code>void**</code> مش <code>void*</code>، لأن الدالة نفسها بتغيّر القيمة دي.</td></tr>
+    </table>
+
+    <p>لو مش محتاج القيمة الراجعة، تقدر تبعت <code>NULL</code> بسيطة. ولو الـ thread مش محتاج arguments أصلًا، تقدر تبعت <code>NULL</code> في <code>pthread_create</code> برضو.</p>
+
+    <div class="warn">
+      <div class="head">⚠ تحذير مهم جدًا</div>
+      <p style="margin:0">مينفعش أبدًا ترجع pointer لـ variable متعمل allocate ليها على الـ stack بتاع الـ thread. لما الـ thread يخلص وينرجع، الـ stack بتاعه بيتمسح تلقائي — فأي pointer راجع بيبقى بيشاور على memory اتفرغت، وده بيسبب undefined behavior (bug صعب جدًا تلاقيه).</p>
+    </div>
+
+    <pre><code><span class="tok-comment">// غلط — الـ struct دي على الـ stack، هتتمسح لما الدالة ترجع</span>
+<span class="tok-type">void</span> <span class="tok-kw">*</span><span class="tok-fn">worker</span>(<span class="tok-type">void</span> <span class="tok-kw">*</span>arg) {
+    result_t bad_result;   <span class="tok-comment">// ALLOCATED ON STACK!</span>
+    bad_result.x <span class="tok-kw">=</span> <span class="tok-str">1</span>;
+    <span class="tok-kw">return</span> (<span class="tok-type">void</span> <span class="tok-kw">*</span>) <span class="tok-kw">&amp;</span>bad_result;   <span class="tok-comment">// خطر!</span>
+}</code></pre>
+
+    <p>الحل: استخدم <code>malloc</code> عشان القيمة تتحط على الـ heap، وسيبها موجودة لحد ما المستدعي (caller) يستخدمها ويعمل <code>free</code> بعدين.</p>
+
+    <div class="tip">
+      💡 مش كل برنامج multi-threaded محتاج <code>pthread_join</code>. مثلًا web server بيعمل worker threads بتفضل شغالة على طول عشان تستقبل requests — مفيش داعي تستناها. لكن أي برنامج parallel بيوزع شغل على threads وعايز يتأكد إن الكل خلص قبل ما يكمل، هيحتاج join.
+    </div>
+  </section>
+
+  <!-- ============ 3 ============ -->
+  <section>
+    <div class="sec-num">27.3</div>
+    <h2><span class="dot">●</span> الأقفال — Locks</h2>
+    <p>بعد الإنشاء والانتظار، أهم حاجة في مكتبة pthreads هي الأقفال، اللي بتضمنلك <b>mutual exclusion</b> (يعني thread واحد بس يدخل الـ critical section في نفس الوقت):</p>
+
+    <pre><code><span class="tok-type">int</span> <span class="tok-fn">pthread_mutex_lock</span>(pthread_mutex_t <span class="tok-kw">*</span>mutex);
+<span class="tok-type">int</span> <span class="tok-fn">pthread_mutex_unlock</span>(pthread_mutex_t <span class="tok-kw">*</span>mutex);</code></pre>
+
+    <p>الفكرة: لو الـ lock فاضي، الـ thread بياخده ويدخل الـ critical section. لو محجوز، الـ thread بيستنى (blocked) لحد ما اللي حاجزه يعمل unlock.</p>
+
+    <pre><code>pthread_mutex_t lock;
+
+<span class="tok-fn">pthread_mutex_lock</span>(<span class="tok-kw">&amp;</span>lock);
+counter <span class="tok-kw">=</span> counter <span class="tok-kw">+</span> <span class="tok-str">1</span>;   <span class="tok-comment">// critical section</span>
+<span class="tok-fn">pthread_mutex_unlock</span>(<span class="tok-kw">&amp;</span>lock);</code></pre>
+
+    <h3>لازم تعمل init الأول</h3>
+    <p>الكود اللي فوق ده ناقصه حاجة مهمة: الـ lock لازم يتعمله init قبل ما تستخدمه. فيه طريقتين:</p>
+
+    <table>
+      <tr><th>ثابتة (static)</th><th>ديناميكية (runtime)</th></tr>
+      <tr>
+        <td><code>pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;</code></td>
+        <td><code>pthread_mutex_init(&amp;lock, NULL);</code></td>
+      </tr>
+    </table>
+
+    <p>الطريقة الديناميكية هي الأكتر استخدامًا، وبعد ما تخلص من الـ lock لازم تعمل <code>pthread_mutex_destroy</code>.</p>
+
+    <div class="warn">
+      <div class="head">⚠ افحص return codes</div>
+      <p style="margin:0">زي أي دالة في UNIX، <code>lock</code> و<code>unlock</code> ممكن يفشلوا. لو ماتفحصش الـ return code، الفشل هيحصل بصمت — وده ممكن يخلي أكتر من thread يدخلوا الـ critical section في نفس الوقت من غير ما تحس!</p>
+    </div>
+
+    <h3>دوال تانية للأقفال</h3>
+    <pre><code><span class="tok-type">int</span> <span class="tok-fn">pthread_mutex_trylock</span>(pthread_mutex_t <span class="tok-kw">*</span>mutex);
+<span class="tok-type">int</span> <span class="tok-fn">pthread_mutex_timedlock</span>(pthread_mutex_t <span class="tok-kw">*</span>mutex,
+                             <span class="tok-kw">struct</span> timespec <span class="tok-kw">*</span>abs_timeout);</code></pre>
+    <p><code>trylock</code> بيرجع فشل فورًا لو الـ lock محجوز (مش بيستنى). <code>timedlock</code> بيستنى لحد وقت معين وبعدين يبطل. الاستخدام الشائع لهم هو الحالات اللي عايز تتجنب فيها إنك تتعلق (stuck) للأبد في انتظار قفل — زي مواضيع الـ deadlock اللي هنشوفها بعدين.</p>
+  </section>
+
+  <!-- ============ 4 ============ -->
+  <section>
+    <div class="sec-num">27.4</div>
+    <h2><span class="dot">●</span> Condition Variables</h2>
+    <p>لو thread محتاج يستنى thread تاني "يعمل حاجة" الأول، هنا بييجي دور الـ condition variables. الدالتين الأساسيتين:</p>
+
+    <pre><code><span class="tok-type">int</span> <span class="tok-fn">pthread_cond_wait</span>(pthread_cond_t <span class="tok-kw">*</span>cond, pthread_mutex_t <span class="tok-kw">*</span>mutex);
+<span class="tok-type">int</span> <span class="tok-fn">pthread_cond_signal</span>(pthread_cond_t <span class="tok-kw">*</span>cond);</code></pre>
+
+    <p>لازم كل condition variable يبقى ليها lock مرتبط بيها، ولازم الـ lock ده يكون محجوز وقت ما بتنادي أي من الدالتين.</p>
+
+    <h3>Thread المستني</h3>
+    <pre><code>pthread_mutex_lock(<span class="tok-kw">&amp;</span>lock);
+<span class="tok-kw">while</span> (ready <span class="tok-kw">==</span> <span class="tok-str">0</span>)
+    pthread_cond_wait(<span class="tok-kw">&amp;</span>cond, <span class="tok-kw">&amp;</span>lock);
+pthread_mutex_unlock(<span class="tok-kw">&amp;</span>lock);</code></pre>
+
+    <h3>Thread اللي بيصحّي التاني</h3>
+    <pre><code>pthread_mutex_lock(<span class="tok-kw">&amp;</span>lock);
+ready <span class="tok-kw">=</span> <span class="tok-str">1</span>;
+pthread_cond_signal(<span class="tok-kw">&amp;</span>cond);
+pthread_mutex_unlock(<span class="tok-kw">&amp;</span>lock);</code></pre>
+
+    <div class="card-grid">
+      <div class="param-card">
+        <span class="name" style="direction:rtl;text-align:right">ليه wait بتاخد lock وsignal لأ؟</span>
+        <span class="desc">لأن <code>pthread_cond_wait</code> بتعمل حاجتين: تنوّم الـ thread، <b>وتفك الـ lock</b> في نفس اللحظة (عشان الـ thread التاني يقدر ياخد الـ lock ويعمل signal). ولما الـ thread يصحى، الدالة بترجع تاخد الـ lock تاني قبل ما ترجع.</span>
+      </div>
+      <div class="param-card">
+        <span class="name" style="direction:rtl;text-align:right">ليه while مش if؟</span>
+        <span class="desc">لأن فيه implementations ممكن "توقّظ" الـ thread غلط (spurious wakeup) من غير إن الشرط اتغير فعلًا. فلازم تتأكد من الشرط تاني بعد ما تصحى — الصحيان نفسه مجرد "تلميح" مش حقيقة مؤكدة.</span>
+      </div>
+    </div>
+
+    <div class="warn">
+      <div class="head">⚠ ماتستخدمش flag عادي بدل condition variable</div>
+      <p style="margin:0">ممكن تتوسوس تستخدم <code>while (ready == 0) ;</code> (spinning) بدل condition variable. متعملش كده أبدًا: أولًا بتضيع CPU cycles وانت مستني، وثانيًا الـ ad-hoc synchronization ده بيبقى مليان bugs — أبحاث فعلية لقت إن حوالي نص الاستخدامات بتاعته فيها bugs.</p>
+    </div>
+  </section>
+
+  <!-- ============ 5 ============ -->
+  <section>
+    <div class="sec-num">27.5</div>
+    <h2><span class="dot">●</span> الكومبايل والتشغيل</h2>
+    <p>لازم تعمل include لـ <code>pthread.h</code>، وعند الـ linking لازم تضيف flag اسمها <code>-pthread</code>:</p>
+    <pre><code>$ gcc <span class="tok-kw">-o</span> main main.c <span class="tok-kw">-Wall</span> <span class="tok-kw">-pthread</span></code></pre>
+  </section>
+
+  <!-- ============ 6 ============ -->
+  <section>
+    <div class="sec-num">27.6</div>
+    <h2><span class="dot">●</span> نصائح ختامية</h2>
+    <p>دول أهم النصايح اللي المفروض تفتكرها وانت شغال بـ pthreads (أو أي thread library تانية):</p>
+
+    <div class="guideline"><div class="num">01</div><div class="txt"><b>خليك بسيط.</b> أي كود بيعمل lock أو signal بين threads لازم يكون أبسط ما يمكن — الـ interactions المعقدة بتجيب bugs.</div></div>
+    <div class="guideline"><div class="num">02</div><div class="txt"><b>قلّل التفاعل بين الـ threads.</b> كل ما التفاعلات تقل وتبقى مدروسة، كل ما أحسن.</div></div>
+    <div class="guideline"><div class="num">03</div><div class="txt"><b>اعمل init للأقفال والـ condition variables.</b> نسيان ده بيدي كود بيشتغل أحيانًا ويفشل أحيانًا بطرق غريبة.</div></div>
+    <div class="guideline"><div class="num">04</div><div class="txt"><b>افحص الـ return codes دايمًا.</b> إهمال ده بيدي behavior غريب وصعب تفهمه.</div></div>
+    <div class="guideline"><div class="num">05</div><div class="txt"><b>خد بالك من تمرير الـ arguments والقيم الراجعة.</b> لو بتبعت reference لحاجة على الـ stack، غالبًا انت غلطان.</div></div>
+    <div class="guideline"><div class="num">06</div><div class="txt"><b>كل thread ليه stack خاص بيه.</b> أي variable محلية جوه دالة الـ thread بتبقى خاصة بيه؛ لو عايز تشارك بيانات بين threads، لازم تكون على الـ heap.</div></div>
+    <div class="guideline"><div class="num">07</div><div class="txt"><b>استخدم condition variables دايمًا للتواصل بين threads.</b> مش flags عادية.</div></div>
+    <div class="guideline"><div class="num">08</div><div class="txt"><b>اقرا الـ man pages.</b> خصوصًا على Linux، فيها تفاصيل كتير مفيدة.</div></div>
+
+    <div class="tip">
+      💡 الجزء الصعب في الـ threads مش الـ API نفسه — دي دوال بسيطة نسبيًا. الصعوبة الحقيقية في المنطق (logic) بتاع إزاي تبني برنامج concurrent صح.
+    </div>
+  </section>
+
+  <footer>
+    source: OSTEP — Operating Systems: Three Easy Pieces, Ch.27 "Interlude: Thread API"<br>
+    guide compiled for study purposes — not a verbatim translation
+  </footer>
+
+</div>
+</body>
+</html>
