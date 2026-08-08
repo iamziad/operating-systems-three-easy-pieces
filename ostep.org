@@ -1733,7 +1733,7 @@ int main(void)
 
 #include "common_threads.h"
 
-pthread_mutex_t m1 = PTHREAD_MUTEX_INITIALIZER;
+kpthread_mutex_t m1 = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t m2 = PTHREAD_MUTEX_INITIALIZER;
 
 void *worker(void *arg)
@@ -1797,4 +1797,140 @@ int main(int argc, char *argv[])
     Pthread_join(p2, NULL);
     return 0;
 }
+#+end_src
+
+** Locks
+
+*** Concurrent Data Structures
+
+- الـ *Global lock* التقليدي بيمنع الـrace conditions ولكنه بطئ شوية لانه بيزود الـrace علي الـlock نفسه.
+  - كل الـthreads بتتنافس علي الـlock في نفس الوقت ولما thread بيقفل الـlock باقي الـthreads بتفضل مستنية فا في CPU cycles كتير بيتضيع في الا شئ.
+
+  - وكمان بيحصل context switching كتير لان الـthreads لما بتستني شوية وتلاقي ان الـlock لسا متفتحش الـOS بيعمل context switching عشان ميضيعش وقت الـCPU اكتر من الازم وطبعا الـcontext switching مكلف وبيجي علي حساب اداء البرنامج.
+
+  - و اصلا مبيكونش في اي paralleism حقيقي, لان كل الـthreads بتشتغل ورا بعض مش مع بعض.
+
+#+begin_src C
+volatile int counter = 0;
+pthread_mutex_t glock = PTHREAD_MUTEX_INITIALIZER;
+
+void *worker(void *args)
+{
+    for (int i = 0; i < 1000000; i++) {
+        pthread_mutex_lock(&glock);
+        counter++;
+        pthread_mutex_unlock(&glock);
+    }
+
+    return NULL;
+}
+
+int main(int argc, char *argv[])
+{
+    pthread_t thrds[15];
+
+    for (int i = 0; i < 15; i++) {
+        pthread_create(&thrds[i], NULL, worker, NULL);
+    }
+
+    for (int i = 0; i < 15; i++) {
+        pthread_join(thrds[i], NULL);
+    }
+
+    printf("counter: %d\n", counter);
+    pthread_mutex_destroy(&glock);
+
+    return 0;
+}
+#+end_src
+
+
+- الطريقة دي بتستخدم local resource كل thread بيشتغل عليها لوحده ومفيش حد بينافسه فيها, كل thread بيزود في local counter خاص بيه من غير ما يتنافسه علي global resource.
+
+- ولكن مازال لازم نعمل flush للـlocal counters دي في الـglobal counter, وفي الحالة دي مضطرين نستخدم lock بس هنخلي الـflush يتعمل كل threshold معين عشان نقلل التنافسية علي الـlock.
+
+#+begin_src C
+int counter;
+pthread_mutex_t glock = PTHREAD_MUTEX_INITIALIZER;
+
+void *worker(void *args)
+{
+    int local = 0;
+
+    for (int i = 0; i < 1000000; i++) {
+        local++;
+
+        if (local >= 1000) {
+            pthread_mutex_lock(&glock);
+            counter += local;
+            pthread_mutex_unlock(&glock);
+            local = 0;
+        }
+    }
+
+    if (local >= 1000) {
+        pthread_mutex_lock(&glock);
+        counter += local;
+        pthread_mutex_unlock(&glock);
+        local = 0;
+    }
+
+    return NULL;
+}
+
+int main(int argc, char *argv[])
+{
+    pthread_t thrds[15];
+
+    for (int i = 0; i < 15; i++) {
+        pthread_create(&thrds[i], NULL, worker, NULL);
+    }
+
+    for (int i = 0; i < 15; i++) {
+        pthread_join(thrds[i], NULL);
+    }
+
+    printf("counter: %d\n", counter);
+    pthread_mutex_destroy(&glock);
+
+    return 0;
+}
+#+end_src
+
+
+- الـapprox counter اسرع بالضعف من الـglobal counter.
+
+#+begin_example
+gcc -o approx2 approx_counter2.c && time ./approx2
+counter: 15000000
+
+________________________________________________________
+Executed in    4.58 millis    fish           external
+   usr time   24.14 millis  258.00 micros   23.89 millis
+   sys time    0.30 millis  303.00 micros    0.00 millis
+
+ziad@nixpc ~/P/o/h/t/code (main)> gcc -o normal normal_counter.c && time ./normal
+counter = 15000000
+
+________________________________________________________
+Executed in    9.43 millis    fish           external
+   usr time    8.68 millis  226.00 micros    8.46 millis
+   sys time    1.31 millis  252.00 micros    1.06 millis
+#+end_example
+
+
+- لو هنستخدم array زي كدا فا لازم نعمل padding بين الـlocal resources عشان الـcache lines.
+
+#+begin_src C
+// prevents false sharing
+typedef struct {
+    int value;
+    char padding[60];
+} PaddedInt;
+
+typedef struct {
+    PaddedInt lvalue[NUM_THRDS];
+    int gvalue;
+    pthread_mutex_t glock;
+} Counter;
 #+end_src

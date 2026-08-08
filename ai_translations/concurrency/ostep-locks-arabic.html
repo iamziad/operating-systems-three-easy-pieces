@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>شرح Locks - OSTEP بالعربي المصري</title>
+<style>
+  :root {
+    --bg: #1d2021;
+    --bg-soft: #282828;
+    --bg-card: #32302f;
+    --fg: #ebdbb2;
+    --fg-dim: #a89984;
+    --accent: #b8bb26;
+    --accent2: #83a598;
+    --warn: #fb4934;
+    --orange: #fe8019;
+    --purple: #d3869b;
+    --border: #504945;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.9;
+    margin: 0;
+    padding: 0;
+  }
+  .container {
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 30px 24px 80px;
+  }
+  header {
+    text-align: center;
+    padding: 40px 20px 30px;
+    border-bottom: 2px solid var(--border);
+    margin-bottom: 30px;
+  }
+  header h1 {
+    color: var(--accent);
+    font-size: 2rem;
+    margin-bottom: 8px;
+  }
+  header p {
+    color: var(--fg-dim);
+    font-size: 0.95rem;
+  }
+  h2 {
+    color: var(--orange);
+    border-right: 4px solid var(--accent);
+    padding-right: 14px;
+    margin-top: 50px;
+    font-size: 1.4rem;
+  }
+  h3 {
+    color: var(--accent2);
+    margin-top: 30px;
+    font-size: 1.15rem;
+  }
+  p { margin: 14px 0; }
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 22px;
+    margin: 20px 0;
+  }
+  .box-idea {
+    background: rgba(184,187,38,0.08);
+    border-right: 4px solid var(--accent);
+    padding: 14px 18px;
+    border-radius: 6px;
+    margin: 18px 0;
+  }
+  .box-warn {
+    background: rgba(251,73,52,0.08);
+    border-right: 4px solid var(--warn);
+    padding: 14px 18px;
+    border-radius: 6px;
+    margin: 18px 0;
+  }
+  .box-crux {
+    background: rgba(254,128,25,0.08);
+    border: 1px dashed var(--orange);
+    padding: 14px 18px;
+    border-radius: 6px;
+    margin: 18px 0;
+  }
+  .box-crux b { color: var(--orange); }
+  pre {
+    background: #1a1a1a;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    overflow-x: auto;
+    direction: ltr;
+    text-align: left;
+    font-size: 0.88rem;
+    margin: 16px 0;
+  }
+  code {
+    font-family: 'Fira Code', Consolas, monospace;
+    color: var(--accent2);
+  }
+  .step {
+    display: flex;
+    gap: 12px;
+    margin: 10px 0;
+    align-items: flex-start;
+  }
+  .step-num {
+    background: var(--accent);
+    color: var(--bg);
+    font-weight: bold;
+    border-radius: 50%;
+    width: 26px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 0.85rem;
+  }
+  ul, ol { padding-right: 22px; }
+  li { margin: 8px 0; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 18px 0;
+  }
+  th, td {
+    border: 1px solid var(--border);
+    padding: 10px 12px;
+    text-align: right;
+  }
+  th {
+    background: var(--bg-soft);
+    color: var(--accent);
+  }
+  .tag {
+    display: inline-block;
+    background: var(--bg-soft);
+    color: var(--purple);
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    margin-inline-end: 6px;
+  }
+  .toc {
+    background: var(--bg-card);
+    border-radius: 10px;
+    padding: 20px 24px;
+    border: 1px solid var(--border);
+  }
+  .toc a {
+    color: var(--accent2);
+    text-decoration: none;
+  }
+  .toc a:hover { text-decoration: underline; }
+  .toc li { margin: 6px 0; }
+  footer {
+    text-align: center;
+    color: var(--fg-dim);
+    margin-top: 60px;
+    font-size: 0.85rem;
+    border-top: 1px solid var(--border);
+    padding-top: 20px;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+  <h1>🔒 Locks — القفل في البرمجة المتزامنة</h1>
+  <p>ملخص وشرح بالعربي المصري لفصل Locks من كتاب OSTEP (Operating Systems: Three Easy Pieces)</p>
+</header>
+
+<div class="toc">
+  <b>هنمشي على إيه في الشرح ده:</b>
+  <ol>
+    <li><a href="#problem">إيه المشكلة أصلاً؟</a></li>
+    <li><a href="#lock-idea">فكرة الـ Lock الأساسية</a></li>
+    <li><a href="#pthread">Pthread Mutex</a></li>
+    <li><a href="#eval">إزاي نقيّم أي Lock</a></li>
+    <li><a href="#interrupts">الحل القديم: تقفيل الـ Interrupts</a></li>
+    <li><a href="#failed">محاولة فاشلة: متغير عادي</a></li>
+    <li><a href="#tas">Test-And-Set</a></li>
+    <li><a href="#cas">Compare-And-Swap</a></li>
+    <li><a href="#llsc">Load-Linked / Store-Conditional</a></li>
+    <li><a href="#faa">Fetch-And-Add وTicket Locks</a></li>
+    <li><a href="#spin-problem">مشكلة الـ Spinning الكتير</a></li>
+    <li><a href="#os-support">الحل: دعم من الـ OS (park/unpark, futex)</a></li>
+    <li><a href="#priority">Priority Inversion</a></li>
+    <li><a href="#summary">الخلاصة</a></li>
+  </ol>
+</div>
+
+<h2 id="problem">1. إيه المشكلة أصلاً؟ 🤔</h2>
+<p>
+احنا عارفين من موضوع الـ concurrency إن فيه مشكلة أساسية: عايزين ننفذ مجموعة تعليمات كأنها عملية واحدة (atomic)،
+بس بسبب الـ interrupts على البروسيسور الواحد، أو وجود أكتر من thread شغالة على أكتر من processor في نفس الوقت،
+مش هنقدر نضمن كده ببساطة. الجزء ده من الكود اللي محتاج يتنفذ من غير مقاطعة اسمه <b>critical section</b>.
+</p>
+<p>
+الحل اللي هنتكلم عنه هنا هو <b>الـ Lock</b>. إحنا كمبرمجين بنحط لوك حوالين أي critical section عشان نضمن إنها تتنفذ
+وكأنها تعليمة واحدة atomic، حتى لو فعليًا هي كذا سطر كود.
+</p>
+
+<h2 id="lock-idea">2. فكرة الـ Lock الأساسية 🔑</h2>
+<p>مثال بسيط: لو عندك عملية زي تحديث رصيد مشترك بين threads كتير:</p>
+<pre><code>balance = balance + 1;</code></pre>
+<p>عشان نحميها بلوك، بنكتب:</p>
+<pre><code>lock_t mutex;   // متغير اللوك، معرّف global
+
+lock(&amp;mutex);
+balance = balance + 1;
+unlock(&amp;mutex);</code></pre>
+<p>
+الـ lock نفسه مجرد <b>متغير</b>، وبيكون في حالة من اتنين: 
+<span class="tag">available / free</span> يعني مفيش thread ماسكه، 
+أو <span class="tag">acquired / held</span> يعني في thread واحد بالظبط ماسكه ودخل الـ critical section.
+</p>
+
+<div class="box-idea">
+<b>ازاي بيشتغل؟</b>
+<div class="step"><div class="step-num">1</div><div>Thread بينادي <code>lock()</code>. لو اللوك فاضي، بياخده ويدخل الـ critical section (بقى "المالك" owner).</div></div>
+<div class="step"><div class="step-num">2</div><div>لو thread تاني نادى <code>lock()</code> في نفس الوقت، مش هيرجعله الفنكشن لحد ما اللي ماسك اللوك يسيبه.</div></div>
+<div class="step"><div class="step-num">3</div><div>لما المالك ينادي <code>unlock()</code>، اللوك يبقى فاضي تاني، ولو فيه threads تانية مستنية، واحد منهم هياخده.</div></div>
+</div>
+<p>
+اللوكس بتديلك تحكم بسيط في الـ scheduling: الـ OS بيشغّل الـ threads إزاي ما يحب، بس اللوك بيضمنلك إن كود معين
+مايشتغلش غير بـ thread واحد في المرة الواحدة، وده بيحول الفوضى بتاعة الـ scheduling لحاجة متحكم فيها أكتر.
+</p>
+
+<h2 id="pthread">3. Pthread Mutex 📚</h2>
+<p>
+في POSIX (المكتبة القياسية للـ threads في لينكس)، اسم الـ lock هو <b>mutex</b>، اختصار لـ "mutual exclusion"،
+لأنه بيمنع أكتر من thread من الدخول للـ critical section في نفس الوقت.
+</p>
+<pre><code>pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+
+pthread_mutex_lock(&amp;lock);
+balance = balance + 1;
+pthread_mutex_unlock(&amp;lock);</code></pre>
+<p>
+لاحظ إن كل مرة بتمرر مؤشر للـ lock نفسه، لإنك ممكن تستخدم أكتر من mutex مختلف عشان تحمي بيانات مختلفة.
+ده بيدّيك مرونة:
+</p>
+<table>
+<tr><th>الاستراتيجية</th><th>الوصف</th></tr>
+<tr><td>Coarse-grained</td><td>لوك واحد كبير بيحمي كل حاجة — بسيط بس بيقلل التوازي</td></tr>
+<tr><td>Fine-grained</td><td>كل بنية بيانات ليها لوك خاص بيها — أعقد شوية بس بيسمح بـ threads أكتر تشتغل مع بعض</td></tr>
+</table>
+
+<h2 id="eval">4. إزاي نقيّم أي Lock؟ ⚖️</h2>
+<div class="box-crux">
+<b>السؤال الأساسي:</b> إزاي نبني لوك كفء؟ محتاجين نعرف نقيّمه على إيه.
+</div>
+<ul>
+<li><b>Correctness (الصحة):</b> هل فعلاً بيمنع أكتر من thread يدخل الـ critical section في نفس الوقت؟</li>
+<li><b>Fairness (العدالة):</b> هل كل thread مستني اللوك هياخد فرصته؟ ولا ممكن يفضل مستني للأبد (starvation)؟</li>
+<li><b>Performance (الأداء):</b> إيه تكلفة استخدام اللوك في الحالات دي:
+  <ul>
+    <li>لما مفيش تنافس (thread واحد بس بياخد ويسيب اللوك)</li>
+    <li>لما فيه أكتر من thread بيتنافسوا على نفس البروسيسور</li>
+    <li>لما فيه threads على أكتر من CPU بيتنافسوا مع بعض</li>
+  </ul>
+</li>
+</ul>
+
+<h2 id="interrupts">5. الحل القديم: تقفيل الـ Interrupts 🚫</h2>
+<p>من أقدم الحلول (للأنظمة اللي فيها processor واحد بس): تقفل الـ interrupts قبل ما تدخل الـ critical section، وتفتحها تاني بعد ما تخرج.</p>
+<pre><code>void lock()   { disable_interrupts(); }
+void unlock() { enable_interrupts();  }</code></pre>
+<p><b>الميزة:</b> بسيط جدًا — طالما مفيش مقاطعة، مفيش thread تاني هيقاطعك.</p>
+<div class="box-warn">
+<b>المشاكل:</b>
+<ul>
+<li>لازم تثق في أي thread بينادي اللوك إنه مش هيسيء استخدام الصلاحية دي (ممكن برنامج شرير أو فيه خطأ يقفل الـ interrupts ويدخل في loop لا نهائي — والحل الوحيد وقتها إعادة تشغيل الجهاز).</li>
+<li>مش شغال أصلاً على أنظمة فيها أكتر من processor: تقفيل الـ interrupts بيأثر على processor واحد بس، والـ threads التانية هتفضل شغالة على الـ processors التانية وتدخل الـ critical section عادي.</li>
+<li>لو قفلت الـ interrupts فترة طويلة، ممكن تضيع interrupts مهمة (زي إشعار إن قرص انتهى من عملية قراءة).</li>
+</ul>
+</div>
+<p>لكل الأسباب دي، الطريقة دي بقت مستخدمة بس جوه الـ OS نفسه في حالات محدودة (لإن الـ OS بيثق في نفسه أصلاً).</p>
+
+<h2 id="failed">6. محاولة فاشلة: بس متغير عادي 😬</h2>
+<p>خلينا نجرب نبني لوك باستخدام متغير flag عادي، من غير أي دعم من الـ hardware:</p>
+<pre><code>typedef struct { int flag; } lock_t;
+
+void init(lock_t *m) { m->flag = 0; }
+
+void lock(lock_t *m) {
+    while (m->flag == 1)   // اختبار القيمة
+        ;                  // فضل مستني (spin)
+    m->flag = 1;           // هنا حط القيمة
+}
+
+void unlock(lock_t *m) { m->flag = 0; }</code></pre>
+<p>الفكرة تبان سليمة، بس فيها مشكلة خطيرة: العملية <code>while + set</code> مش atomic! تخيل السيناريو ده:</p>
+<div class="card">
+<b>Thread 1</b>: بيدخل lock()، بيشوف flag == 0، وقبل ما يحط flag = 1 بتاعته، بتحصل interrupt وينده على <b>Thread 2</b>.<br>
+<b>Thread 2</b>: بيدخل lock() برضه، بيشوف flag لسه == 0 (لإن Thread 1 لسه مغيرهاش)، فيحط flag = 1 ويدخل الـ critical section.<br>
+بعدين يرجع الدور لـ <b>Thread 1</b>، وهو كمان يحط flag = 1 ويدخل الـ critical section.<br>
+<b>النتيجة: الاتنين Threads دخلوا الـ critical section في نفس الوقت! دي كارثة (violation للـ mutual exclusion).</b>
+</div>
+<p>
+كمان فيه مشكلة أداء: الطريقة اللي بتستخدم فيها الـ thread المستنية اللوك اسمها <b>spin-waiting</b> —
+بتفضل تلف في الـ loop وتستهلك وقت الـ CPU من غير فايدة، وده مؤلم جدًا خصوصًا لو فيه processor واحد بس
+(لإن الـ thread اللي ماسكة اللوك مش هتقدر تشتغل أصلاً وقت ما التانية بتلف فاضي).
+</p>
+
+<h2 id="tas">7. الحل: Test-And-Set 🛠️</h2>
+<p>
+عشان نحل المشكلة، محتاجين تعليمة من الـ hardware نفسه بتعمل "اختبار + تحديث" في خطوة واحدة atomic،
+اسمها <b>test-and-set</b> (على x86 اسمها xchg، وعلى SPARC اسمها ldstub).
+</p>
+<pre><code>// كل ده بيحصل atomically في تعليمة واحدة من الـ hardware
+int test_and_set(int *ptr, int new_val) {
+    int old_val = *ptr;
+    *ptr = new_val;
+    return old_val;
+}</code></pre>
+<p>بنستخدمها كده لبناء spin lock صحيح:</p>
+<pre><code>typedef struct { int flag; } lock_t;
+
+void init(lock_t *m) { m->flag = 0; }
+
+void lock(lock_t *m) {
+    while (test_and_set(&amp;m->flag, 1) == 1)
+        ;   // فاضل مستني لحد ما ترجع 0
+}
+
+void unlock(lock_t *m) { m->flag = 0; }</code></pre>
+<div class="box-idea">
+<b>ليه ده شغال؟</b> لأن العملية "اقرا القديمة واكتب الجديدة" بتحصل في خطوة واحدة مايقدرش أي thread تاني يتدخل فيها.
+لو اللوك فاضي (flag=0)، أول thread بينادي test_and_set هيلاقي القيمة القديمة 0، فمعناها هو نجح ياخد اللوك، وفي نفس اللحظة بقت 1.
+أي thread تاني بعد كده هيلاقي القيمة اللي بترجعله دايمًا 1 لحد ما اللي ماسك اللوك يسيبه.
+</div>
+<p>النوع ده من اللوكس اسمه <b>spin lock</b> — أبسط نوع لوك ممكن تبنيه، وبيحتاج scheduler بيعمل preemption (يقاطع الـ threads بالتايمر) عشان يشتغل صح على processor واحد.</p>
+
+<h3>تقييم الـ Spin Lock</h3>
+<table>
+<tr><th>المعيار</th><th>التقييم</th></tr>
+<tr><td>Correctness</td><td>✅ تمام — بيضمن mutual exclusion فعلاً</td></tr>
+<tr><td>Fairness</td><td>❌ مفيش أي ضمان — ممكن thread تفضل مستنية للأبد (starvation)</td></tr>
+<tr><td>Performance (processor واحد)</td><td>❌ ممكن يكون مكلف جدًا لو الـ thread الماسكة اللوك اتقاطعت جوه الـ critical section</td></tr>
+<tr><td>Performance (أكتر من CPU)</td><td>✅ كويس نسبيًا لو عدد الـ threads قريب من عدد الـ CPUs، لإن الـ critical section عادةً قصيرة</td></tr>
+</table>
+
+<h2 id="cas">8. Compare-And-Swap 🔄</h2>
+<p>تعليمة hardware تانية، بتقارن القيمة الحالية بقيمة متوقعة، ولو اتطابقوا تحدّثها:</p>
+<pre><code>int compare_and_swap(int *ptr, int expected, int new_val) {
+    int original = *ptr;
+    if (original == expected)
+        *ptr = new_val;
+    return original;
+}</code></pre>
+<p>بنستخدمها بنفس فكرة test-and-set:</p>
+<pre><code>void lock(lock_t *m) {
+    while (compare_and_swap(&amp;m->flag, 0, 1) == 1)
+        ;   // spin
+}</code></pre>
+<p>الفرق إنها أقوى من test-and-set، وبتتستخدم في تقنيات lock-free أكتر تعقيدًا.</p>
+
+<h2 id="llsc">9. Load-Linked / Store-Conditional 🔗</h2>
+<p>بعض المعماريات (MIPS, ARM, PowerPC, Alpha) بتوفر زوج تعليمات بيشتغلوا مع بعض:</p>
+<ul>
+<li><code>load_linked</code>: زي أي عملية قراءة عادية.</li>
+<li><code>store_conditional</code>: بتنجح وتحدّث القيمة <b>بس لو مفيش حد كتب على نفس العنوان</b> من وقت الـ load_linked. لو حصل تعارض، بترجع فشل (0).</li>
+</ul>
+<pre><code>void lock(lock_t *m) {
+    while (1) {
+        while (load_linked(&amp;m->flag) == 1)
+            ;   // استنى لحد ما تبقى صفر
+        if (store_conditional(&amp;m->flag, 1) == 1)
+            return;   // نجحنا، خدنا اللوك
+        // لو فشلنا، نرجع نجرب تاني
+    }
+}</code></pre>
+
+<h2 id="faa">10. Fetch-And-Add و Ticket Locks 🎟️</h2>
+<p>تعليمة بتزود قيمة وترجع القيمة القديمة، في خطوة واحدة atomic:</p>
+<pre><code>int fetch_and_add(int *ptr) {
+    int old_val = *ptr;
+    *ptr = old_val + 1;
+    return old_val;
+}</code></pre>
+<p>
+باستخدامها، بنقدر نبني <b>Ticket Lock</b> اللي بيحل مشكلة الـ fairness! الفكرة زي تذاكر الدور في البنك:
+كل thread بياخد رقم تذكرة (ticket)، وفيه متغير turn بيحدد دور مين دلوقتي.
+</p>
+<pre><code>typedef struct { int ticket; int turn; } lock_t;
+
+void init(lock_t *m) { m->ticket = 0; m->turn = 0; }
+
+void lock(lock_t *m) {
+    int my_turn = fetch_and_add(&amp;m->ticket);
+    while (m->turn != my_turn)
+        ;   // استنى دورك
+}
+
+void unlock(lock_t *m) { m->turn = m->turn + 1; }</code></pre>
+<div class="box-idea">
+<b>الفرق المهم:</b> Ticket lock بيضمن إن كل thread هيدخل الـ critical section في يوم من الأيام، لإن كل واحد ليه رقم دور محدد.
+عكس test-and-set اللي ممكن thread تفضل تلف لحد ما تجيب حظها.
+</div>
+
+<h2 id="spin-problem">11. مشكلة الـ Spinning الكتير 😩</h2>
+<div class="box-crux">
+<b>المشكلة:</b> تخيل thread ماسكة اللوك وبعدين اتقاطعت (context switch) قبل ما تسيبه. أي thread تانية هتحاول تاخد اللوك هتلاقيه ماسوك، فتفضل تلف (spin) طول الـ time slice بتاعتها من غير فايدة. لو فيه N threads بتتنافس، ممكن نضيع N-1 time slice بالبلاش.
+</div>
+<p>الحلول اللي هيقدمها الـ hardware لوحده مش كفاية — لازم دعم من الـ OS كمان.</p>
+
+<h3>الحل الأول: Yield بس</h3>
+<pre><code>void lock(lock_t *m) {
+    while (test_and_set(&amp;m->flag, 1) == 1)
+        yield();   // سيب المعالج لـ thread تانية
+}</code></pre>
+<p>أحسن من الـ spinning العادي، بس لسه فيه تكلفة (context switch مش رخيص)، ولسه ممكن يحصل starvation.</p>
+
+<h2 id="os-support">12. الحل الحقيقي: نوّم بدل ما تلف 😴</h2>
+<p>
+الحل الأدق: استخدام <b>queue</b> عشان نتحكم مين اللي هياخد اللوك بعد كده، مع دعم من الـ OS زي:
+</p>
+<ul>
+<li><code>park()</code>: بينوّم الـ thread الحالية.</li>
+<li><code>unpark(thread_id)</code>: بيصحّي thread معينة.</li>
+</ul>
+<p>الفكرة العامة (زي ما اتعملت في Solaris مثلًا):</p>
+<div class="step"><div class="step-num">1</div><div>لما thread تحاول تاخد لوك ماسوك، بتحط نفسها في queue الانتظار وتنده على <code>park()</code> تنام.</div></div>
+<div class="step"><div class="step-num">2</div><div>لما الـ thread الماسكة اللوك تخلص وتنده على <code>unlock()</code>، لو فيه حد في الـ queue، بتنده <code>unpark()</code> عليه يصحّى ويدخل الـ critical section مباشرة (من غير ما اللوك يترجع "فاضي" في نص الطريق).</div></div>
+
+<h3>Linux: Futex</h3>
+<p>
+لينكس بتستخدم آلية اسمها <b>futex</b>، فيها integer واحد بيخزن حالتين: البت الأعلى بيقول اللوك ماسوك ولا لأ،
+والباقي بيعد عدد الـ threads المستنية. الميزة إنها سريعة جدًا في الحالة الشائعة (مفيش تنافس)، وبتستخدم
+<code>futex_wait</code> و <code>futex_wake</code> للتعامل مع الـ queue جوه الـ kernel.
+</p>
+
+<h3>Two-Phase Locks</h3>
+<p>
+فكرة هجينة: أول حاجة الـ thread تعمل spin شوية (مرحلة أولى)، على أمل إن اللوك هيتفك قريب. لو ماحصلش، تدخل مرحلة تانية
+وتنام (park) لحد ما توصلها إشارة إن اللوك بقى فاضي. الفكرة إنك بتستفيد من مميزات الطريقتين: 
+سرعة الـ spinning لو اللوك هيتفك بسرعة، وتوفير الـ CPU لو مش هيتفك قريب.
+</p>
+
+<h2 id="priority">13. تنبيه مهم: Priority Inversion ⚠️</h2>
+<div class="box-warn">
+<p>
+مشكلة تانية بتحصل خصوصًا مع الـ spin locks: تخيل thread عندها priority عالي (T2) وthread تانية priority واطي (T1).
+لو T1 خدت اللوك، وبعدين T2 (الأعلى أولوية) حاولت تاخده، هتفضل تلف (spin) لحد ما T1 تشتغل تاني وتسيب اللوك —
+بس لو الـ scheduler دايمًا بيفضّل T2 على T1، ممكن T1 محتاجش تشتغل تاني، فالنظام يقف تمامًا!
+</p>
+<p>
+حتى من غير spin locks، المشكلة ممكن تحصل بشكل أعقد لو فيه 3 threads بأولويات مختلفة — الظاهرة دي معروفة
+وحصلت فعلًا في مهمة "مارس باثفايندر" الفضائية الشهيرة!
+</p>
+<p><b>الحلول:</b> تجنب استخدام spin locks في المواقف دي، أو استخدام تقنية اسمها <i>priority inheritance</i>
+(الـ thread صاحبة الأولوية الأعلى بتدي مؤقتًا أولويتها للـ thread الماسكة اللوك عشان تخلص بسرعة).</p>
+</div>
+
+<h2 id="summary">14. الخلاصة 📝</h2>
+<div class="card">
+<p>
+اللوكس الحقيقية بتتبني من مزيج بين:
+</p>
+<ul>
+<li>🔧 <b>دعم من الـ hardware</b>: تعليمات atomic زي test-and-set، compare-and-swap، load-linked/store-conditional، fetch-and-add.</li>
+<li>🖥️ <b>دعم من الـ OS</b>: زي <code>park()</code>/<code>unpark()</code> في Solaris، أو futex في لينكس، عشان الـ threads تنام بدل ما تضيّع وقت CPU وهي بتلف فاضي.</li>
+</ul>
+<p>
+كل تقنية ليها مقايضة (trade-off) بين البساطة، الـ fairness، والأداء تحت ظروف مختلفة (processor واحد vs أكتر، تنافس قليل vs كتير).
+مفيش حل واحد "الأفضل مطلقًا" — الاختيار بيعتمد على الـ workload والـ hardware اللي شغال عليه.
+</p>
+</div>
+
+<footer>
+ملخص مبني على فصل Locks (Chapter 28) من كتاب OSTEP — Operating Systems: Three Easy Pieces<br>
+بواسطة Remzi H. Arpaci-Dusseau و Andrea C. Arpaci-Dusseau
+</footer>
+
+</div>
+</body>
+</html>
