@@ -1924,8 +1924,8 @@ Executed in    9.43 millis    fish           external
 #+begin_src C
 // prevents false sharing
 typedef struct {
-    int value;
-    char padding[60];
+    uint32_t value;
+    uint8_t padding[60];
 } PaddedInt;
 
 typedef struct {
@@ -1933,4 +1933,15 @@ typedef struct {
     int gvalue;
     pthread_mutex_t glock;
 } Counter;
+#+end_src
+
+
+ او تستخدم الـalignas اللي بتضيف padding برضو بس بطريقة انظف (C11)
+
+#+begin_src C
+#include <stdalign.h>
+
+typedef struct {
+    alignas(64) uint32_t value;
+} PaddedInt;
 #+end_src

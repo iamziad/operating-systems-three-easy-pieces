@@ -1,4 +1,5 @@
 #include <pthread.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -8,8 +9,8 @@
 
 // prevents false sharing
 typedef struct {
-    int value;
-    char padding[60];
+    uint32_t value;
+    uint8_t padding[60];
 } PaddedInt;
 
 typedef struct {
@@ -61,6 +62,13 @@ void *counter_update(void *args)
 
 int main(int argc, char *argv[])
 {
+    size_t padding = sizeof(PaddedInt);
+
+    if (padding == (size_t)64)
+        printf("false sharing is prevented\n");
+    else
+        printf("padding is not correctly set, %zu\n", padding);
+
     pthread_t thrds[NUM_THRDS];
     Counter counter;
 
