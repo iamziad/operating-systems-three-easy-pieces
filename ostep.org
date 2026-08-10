@@ -1799,9 +1799,11 @@ int main(int argc, char *argv[])
 }
 #+end_src
 
-** Locks
+** Lock-based Concurrent Data Structures
 
 *** Concurrent Data Structures
+
+**** Concurrent Counters
 
 - الـ *Global lock* التقليدي بيمنع الـrace conditions ولكنه بطئ شوية لانه بيزود الـrace علي الـlock نفسه.
   - كل الـthreads بتتنافس علي الـlock في نفس الوقت ولما thread بيقفل الـlock باقي الـthreads بتفضل مستنية فا في CPU cycles كتير بيتضيع في الا شئ.
@@ -1809,6 +1811,10 @@ int main(int argc, char *argv[])
   - وكمان بيحصل context switching كتير لان الـthreads لما بتستني شوية وتلاقي ان الـlock لسا متفتحش الـOS بيعمل context switching عشان ميضيعش وقت الـCPU اكتر من الازم وطبعا الـcontext switching مكلف وبيجي علي حساب اداء البرنامج.
 
   - و اصلا مبيكونش في اي paralleism حقيقي, لان كل الـthreads بتشتغل ورا بعض مش مع بعض.
+
+*Global Counter very bad performance*
+- 1M locks
+- A lot of cache invalidations between cores
 
 #+begin_src C
 volatile int counter = 0;
@@ -1845,9 +1851,15 @@ int main(int argc, char *argv[])
 #+end_src
 
 
+---------------------------------------------------------------------------------
+
 - الطريقة دي بتستخدم local resource كل thread بيشتغل عليها لوحده ومفيش حد بينافسه فيها, كل thread بيزود في local counter خاص بيه من غير ما يتنافسه علي global resource.
 
 - ولكن مازال لازم نعمل flush للـlocal counters دي في الـglobal counter, وفي الحالة دي مضطرين نستخدم lock بس هنخلي الـflush يتعمل كل threshold معين عشان نقلل التنافسية علي الـlock.
+
+- الـapprox counter بيستخدم لما تكون عاوز يبقي عندك القابلية انك تقرأ قيمة من الـcounter في اي وقت من خلال thread ثالث خالص وتحصل علي قيمة معقولة وقريبة اثناء ما الـthreads التانية شغالة بتعد.
+
+*Approximate/Sloppy Counter (1000 locks with this specific input)*
 
 #+begin_src C
 int counter;
@@ -1860,7 +1872,7 @@ void *worker(void *args)
     for (int i = 0; i < 1000000; i++) {
         local++;
 
-        if (local >= 1000) {
+        if (local >= 1024) {
             pthread_mutex_lock(&glock);
             counter += local;
             pthread_mutex_unlock(&glock);
@@ -1868,7 +1880,7 @@ void *worker(void *args)
         }
     }
 
-    if (local >= 1000) {
+    if (local >= 1024) {
         pthread_mutex_lock(&glock);
         counter += local;
         pthread_mutex_unlock(&glock);
@@ -1896,6 +1908,11 @@ int main(int argc, char *argv[])
     return 0;
 }
 #+end_src
+
+- الـ Trade-off بتاع الـthreshold
+  - لو قيمة الـthreshold *صغيرة* هناخد اداء اضعف عشان التنافسية علي الـlock هتزبد وبالتالي هيحصل context switching كتير, ولكن قيمة الـcounter هتكون دائما قريبة من القيمة الحقيقة.
+
+  - لو قيمة الـthreshold *كبيرة* هناخد اداء افضل ولكن قيمة الـcounter بتكون متأخرة شوية عن القيمة الحقيقية.
 
 
 - الـapprox counter اسرع بالضعف من الـglobal counter.
@@ -1945,3 +1962,445 @@ typedef struct {
     alignas(64) uint32_t value;
 } PaddedInt;
 #+end_src
+
+
+--------------------------------------------------------------------------------
+
+لكن لو عاوز اسرع حاجة ممكنة ومش هامك انك تقرأ قيمة الـcounter اثناء ما العد شغال وهتقرأه فقط بعد ما العد يخلص, فا ممكن نعمل حاجة شبه الـsloppy counter ولكن بـaggregation في الاخر مش periodic sync.
+
+*Aggregation at the end (only 15 locks)*
+
+#+begin_src C :results output
+#include <pthread.h>
+#include <stdio.h>
+
+int counter;
+pthread_mutex_t glock = PTHREAD_MUTEX_INITIALIZER;
+
+void *worker(void *args)
+{
+    int local = 0;
+
+    for (int i = 0; i < 1000000; i++) {
+        local++;
+    }
+
+    pthread_mutex_lock(&glock);
+    counter += local;
+    pthread_mutex_unlock(&glock);
+
+    return NULL;
+}
+
+int main(int argc, char *argv[])
+{
+    pthread_t thrds[15];
+
+    for (int i = 0; i < 15; i++) {
+        pthread_create(&thrds[i], NULL, worker, NULL);
+    }
+
+    for (int i = 0; i < 15; i++) {
+        pthread_join(thrds[i], NULL);
+    }
+
+    printf("counter: %d\n", counter);
+    pthread_mutex_destroy(&glock);
+
+    return 0;
+}
+#+end_src
+
+** Condition Variables
+
+- الـcondition variables هي اداة من ادوات كتيرة بتساعدنا نكتب كود متزامن بين الـthreads.
+
+*** Busy Waiting
+
+- الـbusy waiting هي ابسط طريقة ممكنة لتزامن اكتر من thread مع بعض, هنا الـmain thread بيخلص وبيقفل من غير ما يستني اي child thread, ممكن نعمل loop بتشيك علي var معين لحد عشان نجبر الـmain thread انها تستني.
+
+  - الطريقة دي كارسية لان الـCPU بيفضل مستني في الـloop مش بيعمل اي حاجة واسهلاك الـCPU بيروح في الهواء بالذات لو الـchild thread بيعمل حاجة ثقيلة فا الـCPU هيفضل مستني كتير.
+
+  - الـchild process هتتحول لـzombie وهتفضل موجودة لحد نهاية مدة البرنامج وكمان مش هنعرف نقرأ الـreturn value.
+
+#+begin_src C :results output
+#include <pthread.h>
+#include <stdio.h>
+
+volatile int done = 0;
+
+void *child(void *arg)
+{
+    printf("child\n");
+    done = 1;
+    return NULL;
+}
+
+int main(int argc, char *argv[])
+{
+    printf("parent begin\n");
+
+    pthread_t c;
+    pthread_create(&c, NULL, child, NULL);
+
+    while (done == 0)
+        ;
+
+    printf("parent end\n");
+
+    return 0;
+}
+#+end_src
+
+#+RESULTS:
+: parent begin
+: child
+: parent end
+
+*** Join
+
+- افضل بمراحل من الـbusy waiting, الـOS بيحط الـmain thread في حالة blocked وبيعمل context switching عشان ميضيعش وقت الـCPU.
+- لما الـchild thread تخلص هيتم تنظيف الموارد الخاصة بيها و قراءة الـreturn value.
+
+#+begin_src C :results output
+#include <pthread.h>
+#include <stdio.h>
+
+void *child(void *arg)
+{
+    printf("child\n");
+    return NULL;
+}
+
+int main(int argc, char *argv[])
+{
+    printf("parent begin\n");
+
+    pthread_t c;
+    pthread_create(&c, NULL, child, NULL);
+    pthread_join(c, NULL);
+
+    printf("parent end\n");
+
+    return 0;
+}
+#+end_src
+
+*** Condition Variables
+
+الطريقتين اللي فاتوا بيخلونا نستني الـlifetime كامل بتاع الـthread, ولكن احيانا بنحتاج نستني شرط معين بس, الـcondition variables بتحل المشكلة دي عن طريق انها بتنيم الـthread اللي مستني الشرط يتحقق وتحطه في queue من الانتظار لحد ما الـthread اللي غير الشرط يعمل signal عشان يصحي الـthread ده تاني.
+
+#+begin_src C
+int pthread_cond_wait(pthread_cond_t *c, pthread_mutex_t *m);
+int pthread_cond_signal(pthread_cond_t *c);
+#+end_src
+
+الـ =wait= هدفها انها تعمل unlock وتنيم الـthread بشكل atomic.
+
+الـ =signal= مش بتصحي اللي عليه الدور, هي بتصحي من الـqueue بشكل عشوائي. (FIFO no guaranteed)
+
+---------------------------------------------------------------------------------
+
+- الـparent هتنشأ الـchild thread, وبعد كدا في احتمالين واحد فيهم هيحصل:
+
+- الاحتمال الاول - الـchild اتنفذ الاول:
+
+  - ان الـchild thread يشتغل علي طول قبل ما الـparent يعمل join(), وفي الحالة دي هيغير الـcondition variable ويعمل signal عشان يصحي اي thread كان نايم علي الـvariable ده ولكن مفيش حد كان نايم عليه بس مش هتفرق لان الـsignal هترجع عادي جدا.
+
+    - وبعد كدا لما الـparent ينفذ الـ =thr_join= هيخش يلاقي الـdone بقت ب1 فهيخرج عادي من غير ما يستني.
+
+- الاحتمال الثاني - الـ =thr_join= اتنفذ الاول:
+
+- او الـparent هيخش ينفذ الـ =thr_join= قبل ما الـchild thread يلحق يشتغل, وساعتها هيلاقي الـdone لسا ب0 فهيعمل unlock وينام لحد ما الـchild يبعتله signal, وساعتها هيرجع من الـblocked state والـlock مقفول ها هيقوم فاتحه تاني وخارج.
+
+#+begin_src C :results output
+#include <pthread.h>
+#include <stdio.h>
+
+pthread_cond_t c = PTHREAD_COND_INITIALIZER;
+pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
+int done;
+
+void thr_exit()
+{
+    pthread_mutex_lock(&m);
+    done = 1;
+    pthread_cond_signal(&c);
+    pthread_mutex_unlock(&m);
+}
+
+void thr_join()
+{
+    pthread_mutex_lock(&m);
+    while (done == 0)
+        pthread_cond_wait(&c, &m);
+    pthread_mutex_unlock(&m);
+}
+
+void *child(void *arg)
+{
+    printf("child\n");
+    thr_exit();
+    return NULL;
+}
+
+int main(int argc, char *argv[])
+{
+    printf("parent begin\n");
+
+    pthread_t c;
+    pthread_create(&c, NULL, child, NULL);
+    thr_join();
+
+    printf("parent end\n");
+
+    return 0;
+}
+#+end_src
+
+#+RESULTS:
+: parent begin
+: child
+: parent end
+
+**** Producer-Consumer Bounded Buffer Pattern
+:PROPERTIES:
+:ID:       acaf9b82-368f-4c62-a8ab-304618679b46
+:END:
+
+
+#+DOWNLOADED: screenshot @ 2026-08-09 18:17:42
+[[file:images/2026-08-09_18-17-42_screenshot.png]]
+
+
+- لما يكون عندنا جهة بتنتج data وجهة تانية بتستهلكها, الـpattern ده بيستخدم في فصل الـproducer عن الـconsumer لما يكون الاتنين بيشتغلوا بـrate او سرعة مختلفة
+- لان لو الـproducer اسرع من الـconsumer, النظام او الـmemory هيتملوا بسرعة والنظام هيضرب.
+
+#+begin_example
+        Producer
+           │
+           │  produces at its own rate
+           ▼
+     ┌─────────────┐
+     │    Queue    │
+     └─────────────┘
+           │
+           │  consumes at its own rate
+           ▼
+        Consumer
+#+end_example
+
+
+- *مثال واقعي*:
+  لو عندنا server بيستقبل requests, فا الـrequests ممكن تيجي بسرعة جدا في حالة زروة علي الموقع مثلا بيجي sec/requests 100, والـworkers المسؤلة عند هندلة الـrequests دي ممكن تكون بتشتغل بسرعة ابطأ مثلا sec/requests 60 فا الـmemory هتتملي والـserver هيقع.
+
+#+begin_example
+Requests
+   ↓
+Producer
+   ↓
+[ Queue ]
+   ↓
+Workers
+   ↓
+Database
+#+end_example
+
+لكن الـpattern ده بيعمل queue والـproducer بيحط jobs جديدة طول ما الـqueue فيه مكان فاضي, والـconsumer بيستهلك منه براحته بالسرعة اللي يقدر عليها.
+
+لو الـbuffer اتملي علي اخره الـproducer هيقف لحد ما الـconsumer يستهلك شوية ويفضي مكان.
+
+-------------------------------------------------------------
+
+- الـbuffer بيشتغل بشكل circular وبيتعمله flip لما يتملي عشان نفضيه تاني ونحط jobs جديدة.
+
+#+begin_src C
+#include <pthread.h>
+#include <stdio.h>
+
+#define LOOPS 10
+#define MAX 5
+
+static int buffer[MAX];
+static int fill_ptr;
+static int empty_ptr;
+static int count; // num of elements stored in buffer
+pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t empty = PTHREAD_COND_INITIALIZER;
+pthread_cond_t fill = PTHREAD_COND_INITIALIZER;
+
+void put(int val)
+{
+    buffer[fill_ptr] = val;
+    fill_ptr = (fill_ptr + 1) % MAX;
+    count++;
+}
+
+int get()
+{
+    int val = buffer[empty_ptr];
+    empty_ptr = (empty_ptr + 1) % MAX;
+    count--;
+    return val;
+}
+
+void *producer(void *arg)
+{
+    for (size_t i = 0; i < LOOPS; i++) {
+        pthread_mutex_lock(&m);
+        while (count == MAX) {
+            pthread_cond_wait(&empty, &m);
+        }
+        put(i);
+        pthread_cond_signal(&fill);
+        pthread_mutex_unlock(&m);
+    }
+    return NULL;
+}
+
+void *consumer(void *arg)
+{
+    for (int i = 0; i < LOOPS; i++) {
+        pthread_mutex_lock(&m);
+        while (count == 0) {
+            pthread_cond_wait(&fill, &m);
+        }
+        int tmp = get();
+        printf("consumed %d\n", tmp);
+        pthread_cond_signal(&empty);
+        pthread_mutex_unlock(&m);
+    }
+    return NULL;
+}
+
+int main(int argc, char *argv[])
+{
+    pthread_t t1, t2;
+    pthread_create(&t1, NULL, producer, NULL);
+    pthread_create(&t2, NULL, consumer, NULL);
+    pthread_join(t1, NULL);
+    pthread_join(t2, NULL);
+
+    return 0;
+}
+#+end_src
+
+**** Coverting Condition
+
+- ممكن نصحي كل الـthreads اللي نايمة علي cv معين من خلال =pthread_cond_broadcast=
+
+** Semaphores
+
+- الـsemaphores هي اداة واحدة ممكن نستخدمها كا *lock* عشان نحمي الـcritical section او كا *cond variable* عشان نخلي الـthreads تنام ومنضيعش CPU cycles علي الفاضي, بتساعدنا عشان نحل مشاكل معقدة وبشكل ابسط من استخدام locks مع الـcond variables.
+
+- هو عبارة عن object فيه integer value, ومن خلالها نقدر نتحكم في اداء الـthreads.
+- بنغير في الـvalue عن طريق =sem_wait= و =sem_post= في الـPOSIX
+- لو القيمة سالبة الـthread بينام, وساعتها القيمة دي بتساوي عدد الـthreads اللي مستنية.
+- لما القيمة بتزيد بـ1 من خلال =sem_post= في thread بيصحي من الـqueue.
+
+  *** =sem_wait=
+
+  - بتنقص القيمة بـ1, فا لو القيمة الابتدائية كانت بـ1 هتبقي 0, وساعتها الـthread بيكمل شغل عادي جدا.
+
+  - بعد كدا اي thread تاني بيدخل الـcritical section وينادي =sem_wait= بينقص القيمة لتحت الـ0 فا بينام, لحد ما الـthread اللي شغال يزود القيمة, وساعتها في thread من اللي نايمين بيصحي.
+
+**** =sem_post=
+
+- بتزود القيمة بـ1, عشان تبعت signal ان الـthread خلص, وتصحي thread تاني من اللي كانوا مستنين.
+
+*** Semaphore As Lock (Binary Semaphore)
+
+- استخدام الـsemaphores كا mutex lock مباشر جدا.
+  - الـthread بيدخل ينادي =sem_wait= فا بينقص القيمة لـ0, ويكمل شغل عادي لحد ما يخلص المليون عدة بتوعوا, وبعد كدا ينادي =sem_post= عشان يصحي الـthread التاني.
+  - لو الـthread التاني حاول يخش الـcritical section قبل ما الـthread الاول يخلص, القيمة هتنزل بالسالب والـthread هينام لحد ما التاني ينادي =sem_post=.
+
+#+begin_src C :results output
+#include <pthread.h>
+#include <semaphore.h>
+#include <stdio.h>
+
+sem_t s;
+int counter;
+
+void *count(void *arg)
+{
+    int local = 0;
+
+    for (int i = 0; i < 1000000; i++) {
+        local++;
+    }
+
+    sem_wait(&s);
+    counter += local;
+    sem_post(&s);
+
+    return NULL;
+}
+
+int main(int argc, char *argv[])
+{
+    sem_init(&s, 0, 1);
+    pthread_t t1, t2;
+    pthread_create(&t1, NULL, count, NULL);
+    pthread_create(&t2, NULL, count, NULL);
+    pthread_join(t1, NULL);
+    pthread_join(t2, NULL);
+
+    printf("counter %d\n", counter);
+    return 0;
+}
+#+end_src
+
+#+RESULTS:
+: counter 2000000
+
+*** Semaphore as Condition Variable (Ordering)
+
+- الـSemaphore ممكن تستخدم كا CV برضو, لان السر كله في القيمة الابتدائية.
+
+- *لو الـparent اشتغل الاول:*
+  - هنا القيمة الابتدائية خليناها بـ0 وبعد كدا الـmain thread نادي علي =sem_wait= فا القيمة نزلت لـ-1 فا نيم نفسه لحد ما الـchild يخلص.
+
+  - الـchild هيخش يشتغل وبعد ما يخلص هنادي =sem_wait= فا القيمة هترجع بـ0 والـmain thread هيصحي.
+
+- *لو الـchild اشتغل الاول:*
+  - لو الـchild اشتغل الاول قبل ما الـparent ينادي =sem_wait= اصلا, فا الـchild هيخلص وهينادي علي =sem_post= فا هيزود القيمة لـ1.
+
+  - الـparent هيروح ينادي =sem_wait= القيمة هتنزل لـ0 والـthread هيكمل شغل عادي من غير ما ينام لان بالفعل الـchild اشتغل وخلص فا مش محتاجين نستني.
+
+- وفي الحالتين قدرنا نوصل للترتيب اللي احنا عاوزينه.
+
+#+begin_src C :results output
+#include <pthread.h>
+#include <semaphore.h>
+#include <stdio.h>
+
+sem_t s;
+
+void *child(void *arg)
+{
+    printf("child\n");
+    sem_post(&s);
+    return NULL;
+}
+
+int main(int argc, char *argv[])
+{
+    sem_init(&s, 0, 0); // inital value = 0
+
+    printf("parnet start\n");
+
+    pthread_t t;
+    pthread_create(&t, NULL, child, NULL);
+
+    sem_wait(&s); // value = -1 (main thread sleep)
+
+    printf("parnet end\n");
+    return 0;
+}
+#+end_src
+
+#+RESULTS:
+: parnet start
+: child
+: parnet end

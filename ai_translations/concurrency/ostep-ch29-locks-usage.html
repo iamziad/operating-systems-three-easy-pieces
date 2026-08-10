@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>الفصل 29: هياكل البيانات المتزامنة القائمة على الأقفال — OSTEP</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg0:#282828; --bg0-h:#1d2021; --bg1:#32302f; --bg2:#3c3836; --bg3:#45403d; --bg4:#4f4945;
+  --fg:#d4be98; --fg-dim:#a89984; --grey:#7c6f64;
+  --red:#ea6962; --orange:#e78a4e; --yellow:#d8a657; --green:#a9b665;
+  --aqua:#89b482; --blue:#7daea3; --purple:#d3869b;
+  --mono:'JetBrains Mono', ui-monospace, monospace;
+  --sans:'Tajawal','Cairo', sans-serif;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0; background:var(--bg0-h); color:var(--fg);
+  font-family:var(--sans); line-height:1.9; font-size:17px;
+  direction:rtl;
+}
+::selection{background:var(--yellow); color:var(--bg0-h)}
+
+/* progress bar */
+#progress{position:fixed; top:0; inset-inline-start:0; height:3px; width:0%;
+  background:linear-gradient(90deg,var(--aqua),var(--yellow),var(--orange)); z-index:200; transition:width .1s}
+
+/* layout */
+.page{max-width:920px; margin:0 auto; padding:0 24px 120px}
+.toc{
+  position:fixed; top:110px; inset-inline-start:22px; width:210px;
+  background:var(--bg1); border:1px solid var(--bg3); border-radius:10px;
+  padding:16px; font-size:13.5px; max-height:70vh; overflow-y:auto;
+}
+.toc-title{color:var(--grey); font-size:11px; letter-spacing:1px; text-transform:uppercase; margin-bottom:10px; font-family:var(--mono)}
+.toc a{display:block; color:var(--fg-dim); text-decoration:none; padding:5px 0; border-inline-start:2px solid transparent; padding-inline-start:10px; margin-inline-start:-1px; transition:.15s}
+.toc a:hover{color:var(--fg)}
+.toc a.active{color:var(--yellow); border-inline-start-color:var(--yellow)}
+@media (max-width:1300px){ .toc{display:none} }
+
+/* hero */
+.hero{padding:70px 0 40px; border-bottom:1px solid var(--bg3); margin-bottom:50px}
+.hero-badge{display:inline-flex; align-items:center; gap:8px; font-family:var(--mono); font-size:12.5px; color:var(--bg0-h); background:var(--yellow); padding:5px 12px; border-radius:100px; font-weight:700; letter-spacing:.5px}
+.hero h1{font-size:2.5rem; margin:22px 0 6px; color:var(--fg); line-height:1.35}
+.hero .en-title{font-family:var(--mono); color:var(--grey); font-size:14px; direction:ltr; text-align:right; margin-bottom:22px}
+.hero p.lead{color:var(--fg-dim); font-size:18px; max-width:640px}
+.hero-svg{margin-top:32px}
+
+/* glossary */
+.glossary{display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:10px; margin:24px 0}
+.gterm{background:var(--bg1); border:1px solid var(--bg3); border-radius:8px; padding:12px 14px}
+.gterm b{color:var(--aqua); font-family:var(--mono); font-size:13px; display:block; margin-bottom:4px; direction:ltr; text-align:right}
+.gterm span{color:var(--fg-dim); font-size:14.5px}
+
+/* sections */
+section.chapter-section{margin:56px 0}
+.section-eyebrow{font-family:var(--mono); color:var(--grey); font-size:12.5px; letter-spacing:1px; margin-bottom:6px}
+h2{font-size:1.7rem; color:var(--fg); border-inline-start:4px solid var(--yellow); padding-inline-start:14px; margin:0 0 22px}
+h3{font-size:1.25rem; color:var(--aqua); margin:34px 0 12px}
+p{color:var(--fg-dim); margin:14px 0}
+p b, li b{color:var(--fg); font-weight:700}
+strong.term{color:var(--yellow); font-weight:700}
+code.inline{font-family:var(--mono); background:var(--bg2); color:var(--orange); padding:1px 6px; border-radius:5px; font-size:.88em; direction:ltr; unicode-bidi:embed}
+ul, ol{color:var(--fg-dim); padding-inline-start:24px}
+li{margin:8px 0}
+a{color:var(--blue)}
+
+/* figures / code */
+.figure{margin:24px 0}
+.figure-cap{font-family:var(--mono); font-size:13px; color:var(--fg-dim); margin-bottom:8px}
+.fig-num{color:var(--bg0-h); background:var(--aqua); padding:2px 8px; border-radius:5px; font-weight:700; margin-inline-end:8px}
+pre.code-block{
+  background:var(--bg1); border:1px solid var(--bg3); border-inline-start:3px solid var(--aqua);
+  border-radius:8px; padding:18px 20px; overflow-x:auto; direction:ltr; text-align:left;
+}
+pre.code-block code{font-family:var(--mono); font-size:13.6px; color:#ebdbb2; line-height:1.65; white-space:pre}
+.cmt{color:var(--grey); font-style:italic}
+
+/* callouts */
+.callout{border-radius:10px; padding:18px 20px; margin:22px 0; border:1px solid var(--bg3)}
+.callout-title{font-family:var(--mono); font-weight:700; font-size:13px; letter-spacing:.5px; margin-bottom:8px; display:flex; align-items:center; gap:8px}
+.callout-body{color:var(--fg-dim)}
+.callout-body p{margin:6px 0}
+.callout.tip{background:rgba(216,166,87,.08); border-color:rgba(216,166,87,.35)}
+.callout.tip .callout-title{color:var(--yellow)}
+.callout.crux{background:rgba(234,105,98,.08); border-color:rgba(234,105,98,.35)}
+.callout.crux .callout-title{color:var(--red)}
+.callout.note{background:rgba(125,174,163,.08); border-color:rgba(125,174,163,.35)}
+.callout.note .callout-title{color:var(--blue)}
+.callout.warning{background:rgba(231,138,78,.08); border-color:rgba(231,138,78,.35)}
+.callout.warning .callout-title{color:var(--orange)}
+
+/* trace table */
+.table-wrap{overflow-x:auto; margin:22px 0}
+table.trace{border-collapse:collapse; width:100%; font-family:var(--mono); direction:ltr; text-align:center; font-size:14px}
+table.trace th, table.trace td{border:1px solid var(--bg3); padding:9px 12px}
+table.trace th{background:var(--bg2); color:var(--yellow)}
+table.trace td{background:var(--bg1); color:var(--fg-dim)}
+table.trace td.hit{color:var(--bg0-h); background:var(--aqua); font-weight:700}
+
+/* diagrams */
+.diagram{background:var(--bg1); border:1px solid var(--bg3); border-radius:10px; padding:24px; margin:24px 0}
+.diagram svg{width:100%; height:auto; display:block}
+
+/* homework */
+.hw-list{counter-reset:hw}
+.hw-item{position:relative; background:var(--bg1); border:1px solid var(--bg3); border-radius:8px; padding:14px 18px 14px 18px; margin:10px 0; padding-inline-start:52px; color:var(--fg-dim)}
+.hw-item::before{counter-increment:hw; content:counter(hw); position:absolute; inset-inline-start:14px; top:50%; transform:translateY(-50%); width:26px; height:26px; border-radius:50%; background:var(--bg3); color:var(--yellow); font-family:var(--mono); display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700}
+
+footer{margin-top:80px; padding-top:24px; border-top:1px solid var(--bg3); color:var(--grey); font-size:13.5px; text-align:center}
+footer a{color:var(--aqua)}
+</style>
+</head>
+<body>
+
+<div id="progress"></div>
+<nav class="toc">
+  <div class="toc-title">المحتويات</div>
+  <a href="#intro">المقدمة والتحدي</a>
+  <a href="#counters">العدادات المتزامنة</a>
+  <a href="#lists">القوائم المرتبطة</a>
+  <a href="#queues">الطوابير</a>
+  <a href="#hash">جدول الـHash</a>
+  <a href="#summary">الخلاصة</a>
+  <a href="#homework">أسئلة الواجب</a>
+</nav>
+<div class="page">
+  <div class="hero">
+    <span class="hero-badge">OSTEP · الفصل 29</span>
+    <h1>هياكل البيانات المتزامنة القائمة على الأقفال</h1>
+    <div class="en-title">Lock-based Concurrent Data Structures</div>
+    <p class="lead">
+      لما يبقى عندك أكتر من <code class="inline">thread</code> عايزين يوصلوا لنفس الـ
+      <code class="inline">data structure</code> في نفس الوقت، إزاي تحط الأقفال بحيث الكود
+      يفضل <b>صح</b> (correct) وفي نفس الوقت <b>سريع</b> (fast)؟ الفصل ده بياخدنا في رحلة
+      من عداد بسيط لحد جدول hash كامل، ويوضح إن "أضف قفل واحد وخلاص" حل شغال، بس مش
+      دايمًا الحل الأمثل.
+    </p>
+    <div class="hero-svg diagram"><svg viewBox="0 0 800 220" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="dot" markerWidth="6" markerHeight="6" refX="3" refY="3">
+      <circle cx="3" cy="3" r="3" fill="currentColor"/>
+    </marker>
+  </defs>
+  <!-- left: many threads, one lock -->
+  <text x="170" y="26" text-anchor="middle" font-family="JetBrains Mono" font-size="12" fill="#7c6f64">lock واحد = زحمة</text>
+  <g stroke-width="2.5" fill="none">
+    <path d="M30,60 C90,60 120,95 170,95" stroke="#ea6962"/>
+    <path d="M30,80 C90,80 120,95 170,95" stroke="#d8a657"/>
+    <path d="M30,100 C90,100 120,95 170,95" stroke="#a9b665"/>
+    <path d="M30,120 C90,120 120,95 170,95" stroke="#7daea3"/>
+    <path d="M30,140 C90,140 120,95 170,95" stroke="#d3869b"/>
+  </g>
+  <rect x="163" y="80" width="14" height="30" rx="3" fill="#282828" stroke="#d8a657" stroke-width="2"/>
+  <path d="M177,110 C230,110 230,95 280,95" stroke="#e78a4e" stroke-width="2.5" fill="none"/>
+  <circle cx="30" cy="60" r="4" fill="#ea6962"/>
+  <circle cx="30" cy="80" r="4" fill="#d8a657"/>
+  <circle cx="30" cy="100" r="4" fill="#a9b665"/>
+  <circle cx="30" cy="120" r="4" fill="#7daea3"/>
+  <circle cx="30" cy="140" r="4" fill="#d3869b"/>
+
+  <!-- divider -->
+  <line x1="400" y1="20" x2="400" y2="200" stroke="#45403d" stroke-dasharray="4 5"/>
+
+  <!-- right: many threads, many fine-grained locks -->
+  <text x="620" y="26" text-anchor="middle" font-family="JetBrains Mono" font-size="12" fill="#7c6f64">locks كتيرة = تزامن حقيقي</text>
+  <g stroke-width="2.5" fill="none">
+    <path d="M450,60 C500,60 500,60 540,60" stroke="#ea6962"/>
+    <path d="M450,90 C500,90 500,90 540,90" stroke="#d8a657"/>
+    <path d="M450,120 C500,120 500,120 540,120" stroke="#a9b665"/>
+    <path d="M450,150 C500,150 500,150 540,150" stroke="#7daea3"/>
+    <path d="M450,180 C500,180 500,180 540,180" stroke="#d3869b"/>
+  </g>
+  <rect x="533" y="50" width="12" height="20" rx="3" fill="#282828" stroke="#ea6962" stroke-width="2"/>
+  <rect x="533" y="80" width="12" height="20" rx="3" fill="#282828" stroke="#d8a657" stroke-width="2"/>
+  <rect x="533" y="110" width="12" height="20" rx="3" fill="#282828" stroke="#a9b665" stroke-width="2"/>
+  <rect x="533" y="140" width="12" height="20" rx="3" fill="#282828" stroke="#7daea3" stroke-width="2"/>
+  <rect x="533" y="170" width="12" height="20" rx="3" fill="#282828" stroke="#d3869b" stroke-width="2"/>
+  <path d="M545,60 C590,60 590,60 650,60" stroke="#ea6962" stroke-width="2.5" fill="none"/>
+  <path d="M545,90 C590,90 590,90 650,90" stroke="#d8a657" stroke-width="2.5" fill="none"/>
+  <path d="M545,120 C590,120 590,120 650,120" stroke="#a9b665" stroke-width="2.5" fill="none"/>
+  <path d="M545,150 C590,150 590,150 650,150" stroke="#7daea3" stroke-width="2.5" fill="none"/>
+  <path d="M545,180 C590,180 590,180 650,180" stroke="#d3869b" stroke-width="2.5" fill="none"/>
+  <circle cx="450" cy="60" r="4" fill="#ea6962"/>
+  <circle cx="450" cy="90" r="4" fill="#d8a657"/>
+  <circle cx="450" cy="120" r="4" fill="#a9b665"/>
+  <circle cx="450" cy="150" r="4" fill="#7daea3"/>
+  <circle cx="450" cy="180" r="4" fill="#d3869b"/>
+</svg></div>
+  </div>
+
+
+<section class="chapter-section" id="intro">
+  <div class="section-eyebrow">01 · البداية</div>
+  <h2>المقدمة والتحدي</h2>
+  <p>
+    إضافة <code class="inline">lock</code> لأي <code class="inline">data structure</code> عشان
+    تخليه <strong class="term">thread-safe</strong> مش صعبة في حد ذاتها — بتاخد لوك قبل ما تلمس
+    الـstructure، وتسيبه بعد ما تخلص. اللي صعب فعلاً هو إنك تحط الأقفال دي بطريقة تدّيك
+    حاجتين مع بعض: <b>Correctness</b> (الكود يشتغل صح مهما كان عدد الـthreads اللي بتنافس على
+    نفس البيانات)، و<b>Performance</b> (كذا thread يقدروا يشتغلوا فعلاً في نفس الوقت من غير
+    ما يقعدوا يستنوا بعض طول الوقت).
+  </p>
+  <div class="callout crux">
+  <div class="callout-title">CRUX: إزاي نضيف أقفال لهياكل البيانات؟</div>
+  <div class="callout-body"><p>لما يكون عندنا data structure معينة، إزاي نضيف الأقفال بحيث تشتغل صح؟ وأهم من كده، إزاي نضيفها بحيث الـstructure تدّي أداء عالي، وتسمح لكذا thread يوصلوا لها في نفس الوقت (concurrently)؟</p></div>
+</div>
+  <p>
+    الموضوع ده اتبحث فيه علميًا لسنين طويلة وفيه آلاف الأبحاث عنه، فمستحيل نغطي كل حاجة في
+    فصل واحد. اللي هنعمله هنا إننا نمشي على أربع أمثلة كلاسيكية — <b>عداد</b>، <b>قائمة
+    مرتبطة</b>، <b>طابور</b>، <b>جدول hash</b> — ونشوف إزاي فكرة "لوك واحد بسيط" بتتطور
+    لحلول أذكى لما الأداء يبقى مشكلة حقيقية.
+  </p>
+  <div class="glossary">
+    <div class="gterm"><b>Thread-safe</b><span>الكود يشتغل صح حتى لو كذا thread بينفذوه في نفس الوقت على نفس البيانات.</span></div>
+    <div class="gterm"><b>Critical Section</b><span>الجزء من الكود اللي بيلمس بيانات مشتركة، ولازم يتنفذ من thread واحد بس في كل لحظة.</span></div>
+    <div class="gterm"><b>Contention</b><span>لما كذا thread يتزاحموا على نفس الـlock، فيقعدوا يستنوا بعض بدل ما يشتغلوا.</span></div>
+    <div class="gterm"><b>Scalability</b><span>قدرة الكود إنه يفضل سريع حتى لو زوّدنا عدد الـthreads/الـCPUs اللي بتشتغل.</span></div>
+  </div>
+</section>
+
+
+<section class="chapter-section" id="counters">
+  <div class="section-eyebrow">02 · أبسط مثال</div>
+  <h2>العدادات المتزامنة (Concurrent Counters)</h2>
+
+  <h3>1. العداد البسيط — بدون أي تزامن</h3>
+  <p>
+    أبسط حاجة ممكن نبدأ بيها: عداد عادي، عبارة عن <code class="inline">int</code> واحد جوه
+    struct، وأربع دوال (init / increment / decrement / get) كل واحدة بتلمس القيمة دي مباشرة.
+    بسيط جدًا، بس لو استخدمته من كذا thread في نفس الوقت هتقع في
+    <strong class="term">race condition</strong>: عملية <code class="inline">c-&gt;value++</code>
+    مش عملية واحدة (atomic) فعليًا — هي في الحقيقة قراءة، زيادة، وكتابة، وممكن تحصل مقاطعة
+    (interleaving) بين thread وتاني تخلي تحديث يضيع.
+  </p>
+  <div class="figure">
+  <div class="figure-cap"><span class="fig-num">شكل 29.1</span> — عداد عادي من غير أي قفل</div>
+  <pre class="code-block"><code>typedef struct __counter_t {
+    int value;
+} counter_t;
+
+void init(counter_t *c) {
+    c-&gt;value = 0;
+}
+
+void increment(counter_t *c) {
+    c-&gt;value++;
+}
+
+void decrement(counter_t *c) {
+    c-&gt;value--;
+}
+
+int get(counter_t *c) {
+    return c-&gt;value;
+}</code></pre>
+</div>
+
+  <h3>2. خليه Thread-Safe — قفل واحد وخلاص</h3>
+  <p>
+    الحل الأول والأبسط: نضيف <code class="inline">pthread_mutex_t lock</code> جوه الـstruct،
+    ونحوط كل عملية بتلمس <code class="inline">value</code> بـ
+    <code class="inline">lock</code> و<code class="inline">unlock</code>. الشكل ده بيفكرك
+    بـ <b>monitors</b>: تاخد اللوك أول ما تدخل الدالة، وتسيبه قبل ما تخرج منها.
+  </p>
+  <div class="figure">
+  <div class="figure-cap"><span class="fig-num">شكل 29.2</span> — نفس العداد لكن بلوك واحد يحمي كل عملية</div>
+  <pre class="code-block"><code>typedef struct __counter_t {
+    int value;
+    pthread_mutex_t lock;
+} counter_t;
+
+void init(counter_t *c) {
+    c-&gt;value = 0;
+    Pthread_mutex_init(&amp;c-&gt;lock, NULL);
+}
+
+void increment(counter_t *c) {
+    Pthread_mutex_lock(&amp;c-&gt;lock);
+    c-&gt;value++;
+    Pthread_mutex_unlock(&amp;c-&gt;lock);
+}
+
+void decrement(counter_t *c) {
+    Pthread_mutex_lock(&amp;c-&gt;lock);
+    c-&gt;value--;
+    Pthread_mutex_unlock(&amp;c-&gt;lock);
+}
+
+int get(counter_t *c) {
+    Pthread_mutex_lock(&amp;c-&gt;lock);
+    int rc = c-&gt;value;
+    Pthread_mutex_unlock(&amp;c-&gt;lock);
+    return rc;
+}</code></pre>
+</div>
+  <p>
+    دلوقتي الكود <b>صحيح 100%</b> ولا فيه أي race condition. المشكلة الجاية مش في الصحة —
+    المشكلة في <b>الأداء</b>.
+  </p>
+
+  <h3>3. المشكلة: العداد ده مبيتوسّعش (Doesn't Scale)</h3>
+  <p>
+    لو شغّلت benchmark بسيط — كل thread يعمل increment للعداد مليون مرة، وغيّرت عدد
+    الـthreads من واحد لأربعة على جهاز بـ4 كور — هتلاقي حاجة غريبة: thread واحد بياخد وقت
+    صغير جدًا (حوالي 0.03 ثانية) عشان يخلّص المليون تحديث. لكن ثنين threads بيشتغلوا في نفس
+    الوقت، كل واحد بيعمل مليون update، بياخدوا مع بعض أكتر من <b>5 ثواني</b>! وكل ما تزوّد
+    threads بيبقى الموضوع أسوأ.
+  </p>
+  <p>
+    ده عكس اللي إحنا عايزينه. المثالي (<b>perfect scaling</b>) إن الوقت يفضل تقريبًا زي ما
+    هو حتى لو زوّدنا عدد الـthreads، لأن الشغل بيتوزّع على processors مختلفة. المشكلة هنا إن
+    الـlock الواحد بقى <strong class="term">bottleneck</strong>: كل الـthreads بتتخانق على
+    نفس اللوك بالظبط، فبتقعد تستنى بعض (contention عالي جدًا) بدل ما تشتغل فعلاً بالتوازي.
+  </p>
+
+  <h3>4. الحل: العداد التقريبي (Approximate Counter)</h3>
+  <p>
+    الفكرة الذكية هنا: بدل ما يكون فيه عداد <b>logical</b> واحد بس بيتشارك فيه الكل، نعمل
+    عداد <b>local</b> منفصل لكل CPU core، + عداد <b>global</b> واحد. يعني على جهاز بـ4 كور،
+    هيبقى فيه 4 عدادات محلية (L1..L4) وعداد عالمي واحد (G)، وكل عداد محلي ليه لوك خاص بيه
+    (llock)، وفيه لوك تاني منفصل للعالمي (glock).
+  </p>
+  <div class="diagram"><svg viewBox="0 0 760 260" xmlns="http://www.w3.org/2000/svg" font-family="JetBrains Mono">
+  <!-- 4 local counters -->
+  <g font-size="12" fill="#d4be98">
+  <rect x="20" y="30" width="140" height="70" rx="8" fill="#3c3836" stroke="#7daea3" stroke-width="1.5"/>
+  <text x="90" y="55" text-anchor="middle" fill="#7daea3">CPU 0</text>
+  <text x="90" y="78" text-anchor="middle">L1 + llock[0]</text>
+
+  <rect x="20" y="110" width="140" height="70" rx="8" fill="#3c3836" stroke="#a9b665" stroke-width="1.5"/>
+  <text x="90" y="135" text-anchor="middle" fill="#a9b665">CPU 1</text>
+  <text x="90" y="158" text-anchor="middle">L2 + llock[1]</text>
+
+  <rect x="20" y="190" width="140" height="60" rx="8" fill="#3c3836" stroke="#d8a657" stroke-width="1.5"/>
+  <text x="90" y="213" text-anchor="middle" fill="#d8a657">CPU 2</text>
+  <text x="90" y="234" text-anchor="middle">L3 + llock[2]</text>
+
+  <rect x="200" y="30" width="140" height="70" rx="8" fill="#3c3836" stroke="#d3869b" stroke-width="1.5"/>
+  <text x="270" y="55" text-anchor="middle" fill="#d3869b">CPU 3</text>
+  <text x="270" y="78" text-anchor="middle">L4 + llock[3]</text>
+  </g>
+
+  <!-- arrows to global -->
+  <g stroke="#7c6f64" stroke-width="1.5" fill="none" marker-end="url(#arrow)">
+    <path d="M160,65 C300,65 350,120 420,140"/>
+    <path d="M160,145 C280,145 350,140 420,140"/>
+    <path d="M160,220 C300,220 350,160 420,140"/>
+    <path d="M340,65 C400,65 400,110 420,140"/>
+  </g>
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 z" fill="#7c6f64"/>
+    </marker>
+  </defs>
+
+  <text x="290" y="110" font-size="11" fill="#7c6f64">لما L يوصل threshold S</text>
+  <text x="290" y="124" font-size="11" fill="#7c6f64">→ نضيفه للـglobal ونصفره</text>
+
+  <rect x="420" y="105" width="180" height="70" rx="10" fill="#282828" stroke="#d8a657" stroke-width="2.5"/>
+  <text x="510" y="135" text-anchor="middle" fill="#d8a657" font-size="14">Global Counter (G)</text>
+  <text x="510" y="156" text-anchor="middle" fill="#7c6f64" font-size="12">glock واحد بس</text>
+
+  <text x="510" y="220" text-anchor="middle" fill="#7c6f64" font-size="12">get() بيقرا من هنا بس — تقريبية مش دقيقة 100%</text>
+</svg></div>
+  <p>
+    لما thread شغّال على core معيّن يعمل increment، هو بيزوّد <b>العداد المحلي بتاعه بس</b>،
+    وده محمي بلوك محلي رخيص. وبما إن كل core بيحدّث عداده الخاص، الـthreads اللي شغالة على
+    كورز مختلفة أصلاً <b>مش بتتخانق على نفس اللوك</b> — فالتحديثات دي scalable من الأساس.
+  </p>
+  <p>
+    بس عشان نقدر نعرف القيمة الإجمالية وقت ما حد يعمل <code class="inline">get()</code>،
+    لازم بين كل فترة والتانية ننقل قيمة العداد المحلي للعالمي: ناخد الـglobal lock، نزوّد
+    الـglobal بقد قيمة الـlocal، وبعدين نصفّر الـlocal. الانتقال ده بيحصل لما العداد المحلي
+    يوصل <b>threshold</b> معيّن اسمه <code class="inline">S</code>.
+  </p>
+  <p>
+    <code class="inline">S</code> هو اللي بيتحكم في الـtrade-off بين الدقة والسرعة:
+  </p>
+  <ul>
+    <li><b>S صغير</b> → كل تحديث تقريبًا بيروح على طول للـglobal → دقة عالية، لكن أداء زي
+      العداد العادي بالظبط.</li>
+    <li><b>S كبير</b> → scalability عالية جدًا (تحديثات محلية كتير من غير ما نلمس الـglobal
+      lock)، لكن قيمة الـglobal ممكن تبعد عن الحقيقة بمقدار (عدد الـCPUs × S) كحد أقصى.</li>
+  </ul>
+  <p>
+    (تقدر برضو تاخد كل اللوكس — المحلية والعالمية — بترتيب معيّن (عشان تتفادى deadlock) وتجيب
+    قيمة دقيقة 100%، لكن ده مش scalable خالص.)
+  </p>
+
+  <h3>مثال على الورق: تتبّع القيم عبر الزمن</h3>
+  <p>
+    خلينا نشوف الفكرة بالأرقام. لو الـthreshold <code class="inline">S = 5</code>، وفيه
+    threads شغالة على 4 كورز بتحدّث L1..L4، هيبقى الجدول شكله كده (الوقت بيزيد لتحت):
+  </p>
+  <div class="table-wrap"><table class="trace">
+      <tr><th>Time</th><th>L1</th><th>L2</th><th>L3</th><th>L4</th><th>G</th></tr>
+      <tr><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td></tr><tr><td>1</td><td>0</td><td>0</td><td>1</td><td>1</td><td>0</td></tr><tr><td>2</td><td>1</td><td>0</td><td>2</td><td>1</td><td>0</td></tr><tr><td>3</td><td>2</td><td>0</td><td>3</td><td>1</td><td>0</td></tr><tr><td>4</td><td>3</td><td>0</td><td>3</td><td>2</td><td>0</td></tr><tr><td>5</td><td>4</td><td>1</td><td>3</td><td>3</td><td>0</td></tr><tr><td>6</td><td class="hit">0 ⟵ 5</td><td>1</td><td>3</td><td>4</td><td class="hit">5</td></tr><tr><td>7</td><td>0</td><td>2</td><td>4</td><td class="hit">0 ⟵ 5</td><td class="hit">10</td></tr>
+    </table></div>
+  <p>
+    لاحظ إن عند <code class="inline">Time = 6</code>، عداد <code class="inline">L1</code>
+    كان وصل لـ5 (يعني وصل للـthreshold)، فاتنقلت قيمته للعالمي وبقى
+    <code class="inline">G = 5</code> وبعدين اتصفّر (<code class="inline">L1 = 0</code>).
+    نفس الحكاية اتكررت مع <code class="inline">L4</code> عند <code class="inline">Time = 7</code>،
+    فبقت <code class="inline">G = 10</code>.
+  </p>
+
+  <h3>الكود الكامل للعداد التقريبي</h3>
+  <div class="figure">
+  <div class="figure-cap"><span class="fig-num">شكل 29.4</span> — تنفيذ العداد التقريبي بعدادات محلية + عالمي</div>
+  <pre class="code-block"><code>typedef struct __counter_t {
+    int global;                  <span class="cmt">// القيمة العالمية (global count)</span>
+    pthread_mutex_t glock;       <span class="cmt">// لوك العالمي (global lock)</span>
+    int local[NUMCPUS];          <span class="cmt">// عداد محلي لكل CPU</span>
+    pthread_mutex_t llock[NUMCPUS]; <span class="cmt">// ولوك محلي لكل واحد فيهم</span>
+    int threshold;                <span class="cmt">// كل قد ايه ننقل للـglobal</span>
+} counter_t;
+
+<span class="cmt">// init: نسجل الـthreshold، نظبط كل اللوكس،</span>
+<span class="cmt">// ونصفر كل القيم المحلية والعالمية</span>
+void init(counter_t *c, int threshold) {
+    c-&gt;threshold = threshold;
+    c-&gt;global = 0;
+    pthread_mutex_init(&amp;c-&gt;glock, NULL);
+    int i;
+    for (i = 0; i &lt; NUMCPUS; i++) {
+        c-&gt;local[i] = 0;
+        pthread_mutex_init(&amp;c-&gt;llock[i], NULL);
+    }
+}
+
+<span class="cmt">// update: في الغالب بناخد بس اللوك المحلي ونحدث</span>
+<span class="cmt">// القيمة المحلية؛ لو وصلت للـ threshold، ناخد</span>
+<span class="cmt">// اللوك العالمي وننقل القيمة المحلية عليه</span>
+void update(counter_t *c, int threadID, int amt) {
+    int cpu = threadID % NUMCPUS;
+    pthread_mutex_lock(&amp;c-&gt;llock[cpu]);
+    c-&gt;local[cpu] += amt;
+    if (c-&gt;local[cpu] &gt;= c-&gt;threshold) {
+        <span class="cmt">// ننقلها للعالمي (بنفترض amt موجبة)</span>
+        pthread_mutex_lock(&amp;c-&gt;glock);
+        c-&gt;global += c-&gt;local[cpu];
+        pthread_mutex_unlock(&amp;c-&gt;glock);
+        c-&gt;local[cpu] = 0;
+    }
+    pthread_mutex_unlock(&amp;c-&gt;llock[cpu]);
+}
+
+<span class="cmt">// get: بترجع القيمة العالمية بس (تقريبية!)</span>
+int get(counter_t *c) {
+    pthread_mutex_lock(&amp;c-&gt;glock);
+    int val = c-&gt;global;
+    pthread_mutex_unlock(&amp;c-&gt;glock);
+    return val; <span class="cmt">// approximate بس</span>
+}</code></pre>
+</div>
+  <p>
+    خلينا نمشي على الكود سطر سطر: الـstruct فيها <code class="inline">global</code> والقفل
+    بتاعه <code class="inline">glock</code>، وبعدين array من العدادات المحلية
+    <code class="inline">local[NUMCPUS]</code> مع array تاني من اللوكس
+    <code class="inline">llock[NUMCPUS]</code>، وأخيرًا <code class="inline">threshold</code>.
+    دالة <code class="inline">init</code> بترتب كل ده وتصفّر القيم. دالة
+    <code class="inline">update</code> هي قلب الفكرة: بتحدد الـCPU المناسب
+    (<code class="inline">threadID % NUMCPUS</code>)، تاخد لوكه المحلي، تزوّد قيمته، ولو
+    وصلت للـthreshold تاخد الـglobal lock وتنقل القيمة وتصفّر المحلي. دالة
+    <code class="inline">get</code> بترجع بس قيمة الـglobal الحالية — وهي، زي ما اتفقنا،
+    <b>تقريبية مش دقيقة</b>.
+  </p>
+  <p>
+    نتيجة القياس الفعلي في الكتاب مبهرة: العداد التقريبي بـ<code class="inline">S = 1024</code>
+    بيخلّص 4 مليون update على 4 processors في وقت قريب جدًا من وقت مليون update على
+    processor واحد بس — يعني <b>scaling شبه مثالي</b>. وكل ما زوّدت S الأداء بيتحسن أكتر،
+    على حساب دقة القيمة العالمية.
+  </p>
+
+  <div class="callout tip">
+  <div class="callout-title">TIP: زيادة التزامن مش شرط تبقى أسرع</div>
+  <div class="callout-body"><p>لو الطريقة اللي بتصممها فيها overhead كبير — زي إنك تاخد وتسيب لوكس كتير أوي بدل مرة واحدة — فحقيقة إنها "أكتر تزامنًا" مش لازم تبقى مفيدة. السكيمات البسيطة غالبًا بتشتغل كويس، خصوصًا لو الروتينات المكلفة نادرة الحدوث. زيادة الأقفال والتعقيد ممكن تبقى وبال عليك. الطريقة الوحيدة إنك تتأكد بجد: تبني الاتنين (البسيط والمعقد) وتقيسهم فعليًا performance-wise — مفيش تحايل على القياس.</p></div>
+</div>
+</section>
+
+
+<section class="chapter-section" id="lists">
+  <div class="section-eyebrow">03 · تركيبة أعقد</div>
+  <h2>القوائم المرتبطة المتزامنة (Concurrent Linked Lists)</h2>
+  <p>
+    نطلع درجة في التعقيد: القائمة المرتبطة. عشان نبسّط الموضوع، هنركّز بس على
+    <code class="inline">insert</code> و<code class="inline">lookup</code>، ونسيب
+    الـ<code class="inline">delete</code> وغيرها كتمرين للقارئ.
+  </p>
+
+  <h3>1. النسخة الأساسية</h3>
+  <p>
+    زي ما اتعودنا: node فيها <code class="inline">key</code> و pointer للـ
+    <code class="inline">next</code>، والقائمة نفسها فيها <code class="inline">head</code>
+    ولوك واحد. الـ<code class="inline">List_Insert</code> بياخد اللوك من أول لحظة، يعمل
+    <code class="inline">malloc</code> لعقدة جديدة، ولو الـmalloc فشلت (حالة نادرة لكن
+    ممكنة) لازم <b>يسيب اللوك قبل ما يرجع بالخطأ</b> — وإلا هيفضل اللوك متاخد للأبد وأي
+    thread تاني هيعلّق (deadlock).
+  </p>
+  <div class="figure">
+  <div class="figure-cap"><span class="fig-num">شكل 29.7</span> — قائمة مرتبطة متزامنة — النسخة الأولى</div>
+  <pre class="code-block"><code><span class="cmt">// شكل الـnode الأساسي</span>
+typedef struct __node_t {
+    int key;
+    struct __node_t *next;
+} node_t;
+
+<span class="cmt">// شكل القائمة نفسها (وحدة واحدة لكل list)</span>
+typedef struct __list_t {
+    node_t *head;
+    pthread_mutex_t lock;
+} list_t;
+
+void List_Init(list_t *L) {
+    L-&gt;head = NULL;
+    pthread_mutex_init(&amp;L-&gt;lock, NULL);
+}
+
+int List_Insert(list_t *L, int key) {
+    pthread_mutex_lock(&amp;L-&gt;lock);
+    node_t *new = malloc(sizeof(node_t));
+    if (new == NULL) {
+        perror("malloc");
+        pthread_mutex_unlock(&amp;L-&gt;lock);
+        return -1; <span class="cmt">// فشل</span>
+    }
+    new-&gt;key = key;
+    new-&gt;next = L-&gt;head;
+    L-&gt;head = new;
+    pthread_mutex_unlock(&amp;L-&gt;lock);
+    return 0; <span class="cmt">// نجاح</span>
+}
+
+int List_Lookup(list_t *L, int key) {
+    pthread_mutex_lock(&amp;L-&gt;lock);
+    node_t *curr = L-&gt;head;
+    while (curr) {
+        if (curr-&gt;key == key) {
+            pthread_mutex_unlock(&amp;L-&gt;lock);
+            return 0; <span class="cmt">// لقيناه</span>
+        }
+        curr = curr-&gt;next;
+    }
+    pthread_mutex_unlock(&amp;L-&gt;lock);
+    return -1; <span class="cmt">// مش موجود</span>
+}</code></pre>
+</div>
+  <div class="callout warning">
+  <div class="callout-title">تنبيه: مسارات الأخطاء خطيرة</div>
+  <div class="callout-body"><p>التعامل مع الـcontrol flow الاستثنائي زي ده (فشل الـmalloc) اتّبت إنه error-prone جدًا في الواقع. دراسة على تعديلات Linux kernel لقت إن نسبة كبيرة من الـbugs (قريب من 40%) بتحصل بالظبط في المسارات النادرة دي — يعني اللي مش بتتنفذ غالبًا وبالتالي مش بتتاختبر كويس.</p></div>
+</div>
+
+  <h3>2. النسخة المحسّنة — إعادة ترتيب بسيطة</h3>
+  <p>
+    السؤال: نقدر نعيد كتابة الدالتين بحيث يفضلوا صح مع التزامن، لكن من غير ما نضطر نحط
+    <code class="inline">unlock</code> في كل مسار فشل ممكن؟ الإجابة: أيوه.
+  </p>
+  <p>
+    في <code class="inline">List_Insert</code>: عملية الـ<code class="inline">malloc</code>
+    نفسها مش محتاجة حماية أصلاً — طالما malloc نفسها thread-safe، كل thread يقدر ينده
+    عليها من غير خوف من race condition. فبنعمل الـmalloc <b>الأول من غير أي لوك</b>، وبعدين
+    لما نيجي فعلاً نعدّل على القائمة المشتركة (نربط العقدة الجديدة بالـhead) وقتها بس ناخد
+    اللوك — يعني اللوك بيحوط الـ<b>critical section الفعلي</b> بس مش الدالة كلها.
+  </p>
+  <p>
+    في <code class="inline">List_Lookup</code>: بدل ما يكون فيه أكتر من
+    <code class="inline">return</code> جوه اللوب (وبالتالي أكتر من مكان لازم تعمل فيه
+    unlock)، بنستخدم متغير واحد <code class="inline">rv</code> وبنعمل
+    <code class="inline">break</code> من اللوب لما نلاقي الـkey، وبنسيب اللوك <b>مرة واحدة
+    بس</b> في نهاية الدالة قبل الـreturn. النتيجة: أماكن أقل للـlock/unlock في الكود،
+    وبالتالي احتمال أقل إنك تنسى تسيب لوك بالغلط.
+  </p>
+  <div class="figure">
+  <div class="figure-cap"><span class="fig-num">شكل 29.8</span> — القائمة بعد إعادة الترتيب — لوك بيحوط الـcritical section بس</div>
+  <pre class="code-block"><code>void List_Init(list_t *L) {
+    L-&gt;head = NULL;
+    pthread_mutex_init(&amp;L-&gt;lock, NULL);
+}
+
+int List_Insert(list_t *L, int key) {
+    <span class="cmt">// الجزء ده مش محتاج تزامن أصلاً</span>
+    node_t *new = malloc(sizeof(node_t));
+    if (new == NULL) {
+        perror("malloc");
+        return -1;
+    }
+    new-&gt;key = key;
+    <span class="cmt">// اللوك حوالين الـcritical section بس</span>
+    pthread_mutex_lock(&amp;L-&gt;lock);
+    new-&gt;next = L-&gt;head;
+    L-&gt;head = new;
+    pthread_mutex_unlock(&amp;L-&gt;lock);
+    return 0; <span class="cmt">// نجاح</span>
+}
+
+int List_Lookup(list_t *L, int key) {
+    int rv = -1;
+    pthread_mutex_lock(&amp;L-&gt;lock);
+    node_t *curr = L-&gt;head;
+    while (curr) {
+        if (curr-&gt;key == key) {
+            rv = 0;
+            break;
+        }
+        curr = curr-&gt;next;
+    }
+    pthread_mutex_unlock(&amp;L-&gt;lock);
+    return rv; <span class="cmt">// نجاح أو فشل، مخرج واحد بس</span>
+}</code></pre>
+</div>
+
+  <div class="callout tip">
+  <div class="callout-title">TIP: احترس من الأقفال وتغييرات الـcontrol flow</div>
+  <div class="callout-body"><p>نصيحة عامة، مش بس في الكود المتزامن: احترس من أي تغيير في مسار التنفيذ بيؤدي لـ return أو exit أو أي حالة خطأ توقف تنفيذ الدالة. لأن كتير من الدوال بتبدأ بأخذ لوك أو حجز memory أو أي عملية stateful تانية، فلما يحصل error لازم الكود "يرجّع" كل الحالة دي قبل ما يخرج — وده سهل جدًا تغلط فيه. الأفضل تصمم الكود من الأساس بحيث يقلل الأنماط دي قد الإمكان.</p></div>
+</div>
+
+  <h3>3. Hand-over-hand Locking (Lock Coupling)</h3>
+  <p>
+    القائمة اللي فوق دي شغالة، لكن برضو مش scalable لأنها لسه بتستخدم لوك واحد للقائمة
+    كلها. فكرة تانية استكشفها الباحثين: بدل لوك واحد للقائمة، تحط <b>لوك لكل node</b>. وانت
+    ماشي (traversing) في القائمة، الكود بياخد لوك الـnode الجاية <b>الأول</b>، وبعدين يسيب
+    لوك الـnode الحالية — يعني "إيد ورا إيد" (ومن هنا الاسم hand-over-hand).
+  </p>
+  <p>
+    نظريًا الفكرة معقولة جدًا وبتسمح بتزامن عالي في عمليات القائمة. لكن عمليًا، صعب جدًا
+    توصّل الطريقة دي تبقى أسرع من اللوك الواحد البسيط — overhead إنك تاخد وتسيب لوك لكل
+    node وانت بتعدّي على قائمة كبيرة بيبقى مكلف جدًا. حتى مع قوائم كبيرة وعدد threads كبير،
+    مش غالبًا هتلاقي hand-over-hand أسرع من لوك واحد بسيط. يمكن حل وسط (hybrid) — تاخد لوك
+    جديد كل كام node بدل كل node لوحده — يستاهل تجربة.
+  </p>
+</section>
+
+
+<section class="chapter-section" id="queues">
+  <div class="section-eyebrow">04 · لوكين بدل واحد</div>
+  <h2>الطوابير المتزامنة (Concurrent Queues)</h2>
+  <p>
+    زي ما اتعودنا، الطريقة الافتراضية دايمًا موجودة: حط <b>big lock واحد</b> وخلاص. هنا
+    هنتخطاها ونشوف طريقة أذكى صمّمها <b>Michael and Scott</b>.
+  </p>
+  <p>
+    الفكرة: بدل لوك واحد للطابور كله، فيه <b>اتنين</b> — واحد للـ
+    <code class="inline">head</code> (اسمه <code class="inline">head_lock</code>) وواحد
+    للـ<code class="inline">tail</code> (اسمه <code class="inline">tail_lock</code>). كده
+    عملية <code class="inline">Enqueue</code> (بتحط في الآخر) بتستخدم غالبًا
+    <code class="inline">tail_lock</code> بس، وعملية <code class="inline">Dequeue</code>
+    (بتشيل من الأول) بتستخدم <code class="inline">head_lock</code> بس — فالاتنين ممكن
+    يحصلوا في نفس الوقت من غير ما يتصادموا خالص.
+  </p>
+  <div class="diagram"><svg viewBox="0 0 720 180" xmlns="http://www.w3.org/2000/svg" font-family="JetBrains Mono">
+  <text x="360" y="24" text-anchor="middle" fill="#7c6f64" font-size="12">head_lock بيحمي الآخد بس، tail_lock بيحمي الحط بس — مبيتصادموش</text>
+
+  <rect x="30" y="60" width="80" height="50" rx="8" fill="#282828" stroke="#7daea3" stroke-width="2"/>
+  <text x="70" y="90" text-anchor="middle" fill="#7daea3" font-size="13">dummy</text>
+
+  <rect x="150" y="60" width="70" height="50" rx="8" fill="#3c3836" stroke="#a9b665" stroke-width="1.5"/>
+  <text x="185" y="90" text-anchor="middle" fill="#a9b665" font-size="13">n1</text>
+
+  <rect x="260" y="60" width="70" height="50" rx="8" fill="#3c3836" stroke="#a9b665" stroke-width="1.5"/>
+  <text x="295" y="90" text-anchor="middle" fill="#a9b665" font-size="13">n2</text>
+
+  <rect x="370" y="60" width="70" height="50" rx="8" fill="#3c3836" stroke="#a9b665" stroke-width="1.5"/>
+  <text x="405" y="90" text-anchor="middle" fill="#a9b665" font-size="13">n3</text>
+
+  <g stroke="#7c6f64" stroke-width="2" marker-end="url(#arrow2)">
+    <line x1="110" y1="85" x2="148" y2="85"/>
+    <line x1="220" y1="85" x2="258" y2="85"/>
+    <line x1="330" y1="85" x2="368" y2="85"/>
+  </g>
+  <defs>
+    <marker id="arrow2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 z" fill="#7c6f64"/>
+    </marker>
+  </defs>
+
+  <!-- head lock pointing at dummy/first real -->
+  <path d="M70,60 C70,35 70,35 70,20" stroke="#ea6962" stroke-width="1.5" fill="none" stroke-dasharray="3 3"/>
+  <rect x="20" y="0" width="100" height="24" rx="12" fill="#ea6962"/>
+  <text x="70" y="16" text-anchor="middle" fill="#1d2021" font-size="11" font-weight="700">head_lock</text>
+
+  <!-- tail lock pointing at last node -->
+  <path d="M405,60 C405,35 405,35 405,20" stroke="#d8a657" stroke-width="1.5" fill="none" stroke-dasharray="3 3"/>
+  <rect x="355" y="0" width="100" height="24" rx="12" fill="#d8a657"/>
+  <text x="405" y="16" text-anchor="middle" fill="#1d2021" font-size="11" font-weight="700">tail_lock</text>
+
+  <text x="70" y="140" text-anchor="middle" fill="#7c6f64" font-size="11">head</text>
+  <text x="405" y="140" text-anchor="middle" fill="#7c6f64" font-size="11">tail</text>
+  <text x="230" y="165" text-anchor="middle" fill="#928374" font-size="12">Dequeue بياخد من هنا (بعد الـdummy) ⟵ ⟶ Enqueue بيحط هنا</text>
+</svg></div>
+  <p>
+    الحيلة الذكية اللي استخدمها Michael and Scott: إضافة <b>dummy node</b> وهمية وقت
+    الـinit. من غيرها، أول عملية enqueue أو dequeue هتحتاج تلمس الـhead والـtail مع بعض،
+    وده كان هيرجّعنا للوك واحد مشترك. بوجود الـdummy، فصل الـhead عن الـtail بقى ممكن فعليًا.
+  </p>
+  <div class="figure">
+  <div class="figure-cap"><span class="fig-num">شكل 29.9</span> — طابور Michael and Scott — لوك للـhead ولوك للـtail</div>
+  <pre class="code-block"><code>typedef struct __node_t {
+    int value;
+    struct __node_t *next;
+} node_t;
+
+typedef struct __queue_t {
+    node_t *head;
+    node_t *tail;
+    pthread_mutex_t head_lock, tail_lock;
+} queue_t;
+
+void Queue_Init(queue_t *q) {
+    node_t *tmp = malloc(sizeof(node_t));
+    tmp-&gt;next = NULL;
+    q-&gt;head = q-&gt;tail = tmp;   <span class="cmt">// عقدة وهمية (dummy)</span>
+    pthread_mutex_init(&amp;q-&gt;head_lock, NULL);
+    pthread_mutex_init(&amp;q-&gt;tail_lock, NULL);
+}
+
+void Queue_Enqueue(queue_t *q, int value) {
+    node_t *tmp = malloc(sizeof(node_t));
+    assert(tmp != NULL);
+    tmp-&gt;value = value;
+    tmp-&gt;next = NULL;
+
+    pthread_mutex_lock(&amp;q-&gt;tail_lock);
+    q-&gt;tail-&gt;next = tmp;
+    q-&gt;tail = tmp;
+    pthread_mutex_unlock(&amp;q-&gt;tail_lock);
+}
+
+int Queue_Dequeue(queue_t *q, int *value) {
+    pthread_mutex_lock(&amp;q-&gt;head_lock);
+    node_t *tmp = q-&gt;head;
+    node_t *new_head = tmp-&gt;next;
+    if (new_head == NULL) {
+        pthread_mutex_unlock(&amp;q-&gt;head_lock);
+        return -1; <span class="cmt">// الطابور فاضي</span>
+    }
+    *value = new_head-&gt;value;
+    q-&gt;head = new_head;
+    pthread_mutex_unlock(&amp;q-&gt;head_lock);
+    free(tmp);
+    return 0;
+}</code></pre>
+</div>
+  <p>
+    خلينا نمشي على الكود: <code class="inline">Queue_Init</code> بتعمل malloc لعقدة dummy
+    وتخلي <code class="inline">head</code> و<code class="inline">tail</code> الاتنين
+    يشاوروا عليها. <code class="inline">Queue_Enqueue</code> بتاخد
+    <code class="inline">tail_lock</code> بس، تربط <code class="inline">tail-&gt;next</code>
+    بالعقدة الجديدة، وتحرك <code class="inline">tail</code> عليها.
+    <code class="inline">Queue_Dequeue</code> بتاخد <code class="inline">head_lock</code>
+    بس، تشوف لو الطابور فاضي (<code class="inline">new_head == NULL</code>) ترجع -1، وإلا
+    تاخد القيمة من <code class="inline">new_head</code>، تحرك <code class="inline">head</code>،
+    وتعمل <code class="inline">free</code> للعقدة القديمة.
+  </p>
+  <p>
+    ملاحظة مهمة: الطابور ده <b>بلوكس بس</b> — مفيهوش آلية "استنى لو الطابور فاضي" أو
+    "استنى لو ممتلئ". الموضوع ده (bounded buffer) هو محور الفصل الجاي عن
+    <b>condition variables</b>.
+  </p>
+</section>
+
+
+<section class="chapter-section" id="hash">
+  <div class="section-eyebrow">05 · أعلى تزامن ممكن هنا</div>
+  <h2>جدول الـHash المتزامن (Concurrent Hash Table)</h2>
+  <p>
+    آخر مثال، وهو أبسط حاجة وأقواها في نفس الوقت: <b>hash table</b> بسيط (من غير resizing —
+    سايبينها تمرين للقارئ). الفكرة قائمة بالكامل على القوائم المرتبطة اللي عملناها فوق.
+  </p>
+  <p>
+    السبب في أدائه الممتاز: بدل ما يكون فيه لوك واحد للجدول كله، بيتحط <b>لوك مستقل لكل
+    bucket</b> (وكل bucket نفسه عبارة عن list_t زي اللي بنيناها). كده كذا thread يقدروا
+    يشتغلوا على buckets مختلفة في نفس الوقت من غير ما يستنوا بعض خالص.
+  </p>
+  <div class="diagram"><svg viewBox="0 0 720 190" xmlns="http://www.w3.org/2000/svg" font-family="JetBrains Mono">
+  <text x="360" y="20" text-anchor="middle" fill="#7c6f64" font-size="12">لوك مستقل لكل bucket → عمليات على buckets مختلفة تحصل مع بعض من غير أي تصادم</text>
+  <g font-size="12">
+    <rect x="20" y="45" width="100" height="34" rx="6" fill="#3c3836" stroke="#d3869b" stroke-width="1.5"/>
+    <text x="70" y="67" text-anchor="middle" fill="#d3869b">bucket[0]</text>
+    <rect x="20" y="95" width="100" height="34" rx="6" fill="#3c3836" stroke="#d3869b" stroke-width="1.5"/>
+    <text x="70" y="117" text-anchor="middle" fill="#d3869b">bucket[1]</text>
+    <rect x="20" y="145" width="100" height="34" rx="6" fill="#3c3836" stroke="#d3869b" stroke-width="1.5"/>
+    <text x="70" y="167" text-anchor="middle" fill="#d3869b">bucket[...]</text>
+  </g>
+  <g stroke="#928374" stroke-width="1.5" fill="none">
+    <path d="M120,62 C170,62 170,62 210,62"/>
+    <path d="M120,112 C170,112 170,112 210,112"/>
+    <path d="M120,162 C170,162 170,162 210,162"/>
+  </g>
+  <g font-size="11" fill="#d4be98">
+    <rect x="210" y="45" width="80" height="34" rx="6" fill="#282828" stroke="#7daea3" stroke-width="1.5"/>
+    <text x="250" y="67" text-anchor="middle">list + lock</text>
+    <rect x="210" y="95" width="80" height="34" rx="6" fill="#282828" stroke="#7daea3" stroke-width="1.5"/>
+    <text x="250" y="117" text-anchor="middle">list + lock</text>
+    <rect x="210" y="145" width="80" height="34" rx="6" fill="#282828" stroke="#7daea3" stroke-width="1.5"/>
+    <text x="250" y="167" text-anchor="middle">list + lock</text>
+  </g>
+  <text x="480" y="65" fill="#7c6f64" font-size="12">كل bucket = List_t</text>
+  <text x="480" y="85" fill="#7c6f64" font-size="12">اللي عملناها فوق بالظبط</text>
+  <text x="480" y="115" fill="#7c6f674" font-size="12">key % BUCKETS</text>
+  <text x="480" y="135" fill="#7c6f68" font-size="12">بيحدد أي bucket</text>
+</svg></div>
+  <div class="figure">
+  <div class="figure-cap"><span class="fig-num">شكل 29.10</span> — جدول hash مبني فوق القوائم المتزامنة، بـ101 bucket</div>
+  <pre class="code-block"><code>#define BUCKETS (101)
+
+typedef struct __hash_t {
+    list_t lists[BUCKETS];
+} hash_t;
+
+void Hash_Init(hash_t *H) {
+    int i;
+    for (i = 0; i &lt; BUCKETS; i++)
+        List_Init(&amp;H-&gt;lists[i]);
+}
+
+int Hash_Insert(hash_t *H, int key) {
+    return List_Insert(&amp;H-&gt;lists[key % BUCKETS], key);
+}
+
+int Hash_Lookup(hash_t *H, int key) {
+    return List_Lookup(&amp;H-&gt;lists[key % BUCKETS], key);
+}</code></pre>
+</div>
+  <p>
+    الكود بسيط جدًا: <code class="inline">Hash_Init</code> بتعمل
+    <code class="inline">List_Init</code> لكل bucket في المصفوفة.
+    <code class="inline">Hash_Insert</code> و<code class="inline">Hash_Lookup</code> بس
+    بيحسبوا <code class="inline">key % BUCKETS</code> عشان يحددوا هو في أنهي bucket،
+    وبعدين ينادوا على <code class="inline">List_Insert</code>/<code class="inline">List_Lookup</code>
+    اللي عملناها في القسم اللي فات.
+  </p>
+  <p>
+    النتيجة في القياس الفعلي: جدول الـhash ده بيتوسّع (scale) بشكل رهيب — الفرق واضح جدًا لما
+    تقارنه بقائمة مرتبطة عادية بلوك واحد، اللي مبتتوسعش خالص مهما زوّدت الـthreads.
+  </p>
+</section>
+
+
+<section class="chapter-section" id="summary">
+  <div class="section-eyebrow">06 · الخلاصة</div>
+  <h2>الخلاصة والدروس المستفادة</h2>
+  <p>
+    شفنا في الفصل ده أربع هياكل بيانات متزامنة — من العداد، للقائمة، للطابور، لحد جدول
+    الـhash المستخدم في كل حتة. أهم الدروس اللي طلعنا بيها:
+  </p>
+  <ul>
+    <li>احترس جدًا وانت بتاخد/تسيب لوكس حوالين أي تغيير في الـcontrol flow (زي مسارات
+      الأخطاء).</li>
+    <li>زيادة التزامن (concurrency) مش شرط تبقى معناها أداء أحسن — أحيانًا بتكون العكس.</li>
+    <li>معالجة مشاكل الأداء لازم تكون <b>لما توجد فعلاً</b>، مش استباقًا.</li>
+  </ul>
+  <div class="callout tip">
+  <div class="callout-title">TIP: تجنّب التحسين المبكر (Knuth's Law)</div>
+  <div class="callout-body"><p>لما تبني data structure متزامنة، ابدأ بأبسط طريقة ممكنة — لوك واحد كبير يحمي كل حاجة. بالطريقة دي هتبني حاجة صحيحة من البداية؛ ولو بعدين لقيت فعلاً مشكلة أداء، وقتها بس حسّنها. زي ما قال Knuth: "التحسين المبكر هو أصل كل الشرور".</p><p>تاريخيًا، أنظمة زي SunOS و Linux لما بدأت تشتغل على multiprocessors استخدمت لوك واحد كبير. في Linux كان اسمه بالظبط <b>Big Kernel Lock (BKL)</b>. الطريقة دي شغالة كويس لسنين طويلة، لحد ما أنظمة الـmulti-core بقت الأساس وبقى اللوك الواحد ده <b>bottleneck</b> حقيقي. Linux حلها بطريقة مباشرة: استبدل اللوك الواحد بلوكسات كتير. أما Sun فقررت حاجة أكبر بكتير: بنت نظام تشغيل جديد بالكامل من الصفر اسمه <b>Solaris</b>، مصمم من أول يوم يراعي الـconcurrency في بنيته الأساسية.</p></div>
+</div>
+</section>
+
+
+<section class="chapter-section" id="homework">
+  <div class="section-eyebrow">07 · تطبيق عملي</div>
+  <h2>أسئلة الواجب</h2>
+  <p>
+    الفصل بيقترح واجب عملي بالكامل قائم على إنك تكتب كود متزامن حقيقي وتقيس أداءه —
+    مهارة أساسية جدًا لأي حد بيتعلم backend/systems programming.
+  </p>
+  <div class="hw-list"><div class="hw-item">ابدأ بإعادة القياسات اللي في الفصل بنفسك — استخدم gettimeofday() عشان تقيس الوقت. جرّب تعرف دقة الـtimer ده، وأصغر فترة زمنية يقدر يقيسها.</div><div class="hw-item">ابنِ عداد متزامن بسيط (زي الشكل 29.2)، وقيس الوقت اللي بياخده لما تزوّد عدد الـthreads. كام CPU متاح عندك؟ هل ده بيأثر على القياسات؟</div><div class="hw-item">ابنِ نسخة من العداد التقريبي، وقيس أداءه مع تغيير عدد الـthreads والـthreshold. هل الأرقام اللي بتطلعلك قريبة من اللي في الفصل؟</div><div class="hw-item">ابنِ قائمة مرتبطة بتستخدم hand-over-hand locking. اقرأ الورقة البحثية بتاعتها الأول عشان تفهم الفكرة كويس، وبعدين قيس أداءها مقابل القائمة العادية.</div><div class="hw-item">اختار data structure تانية تحبها (زي B-tree)، وابدأ بلوك واحد بسيط، وقيس أداءها مع زيادة عدد الـthreads.</div><div class="hw-item">فكّر في استراتيجية locking أذكى لنفس الـdata structure اللي اخترتها، وقارن أداءها بالطريقة البسيطة.</div></div>
+</section>
+
+
+<footer>
+  المصدر الأصلي: <a href="https://pages.cs.wisc.edu/~remzi/OSTEP/threads-locks-usage.pdf" target="_blank" rel="noopener">OSTEP — Chapter 29: Lock-based Concurrent Data Structures</a>
+  <br>ملخص ودليل دراسة بالعربي المصري — جزء من رحلة مذاكرة الـOperating Systems.
+</footer>
+</div>
+
+<script>
+(function(){
+  var bar = document.getElementById('progress');
+  function onScroll(){
+    var h = document.documentElement;
+    var scrolled = (h.scrollTop) / (h.scrollHeight - h.clientHeight) * 100;
+    bar.style.width = scrolled + '%';
+  }
+  document.addEventListener('scroll', onScroll);
+  onScroll();
+
+  var links = Array.prototype.slice.call(document.querySelectorAll('.toc a'));
+  var secs = links.map(function(l){ return document.querySelector(l.getAttribute('href')); }).filter(Boolean);
+  function onSpy(){
+    var pos = window.scrollY + 140;
+    var current = secs[0];
+    secs.forEach(function(s){ if (s.offsetTop <= pos) current = s; });
+    links.forEach(function(l){ l.classList.remove('active'); });
+    var idx = secs.indexOf(current);
+    if (idx >= 0) links[idx].classList.add('active');
+  }
+  document.addEventListener('scroll', onSpy);
+  onSpy();
+})();
+</script>
+</body>
+</html>

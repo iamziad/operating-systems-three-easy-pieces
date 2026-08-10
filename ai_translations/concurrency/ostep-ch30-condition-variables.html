@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>الفصل 30: متغيرات الشرط (Condition Variables) — OSTEP</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg0:#282828; --bg0-h:#1d2021; --bg1:#32302f; --bg2:#3c3836; --bg3:#45403d; --bg4:#4f4945;
+  --fg:#d4be98; --fg-dim:#a89984; --grey:#7c6f64;
+  --red:#ea6962; --orange:#e78a4e; --yellow:#d8a657; --green:#a9b665;
+  --aqua:#89b482; --blue:#7daea3; --purple:#d3869b;
+  --mono:'JetBrains Mono', ui-monospace, monospace;
+  --sans:'Tajawal','Cairo', sans-serif;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0; background:var(--bg0-h); color:var(--fg);
+  font-family:var(--sans); line-height:1.9; font-size:17px;
+  direction:rtl;
+}
+::selection{background:var(--yellow); color:var(--bg0-h)}
+#progress{position:fixed; top:0; inset-inline-start:0; height:3px; width:0%;
+  background:linear-gradient(90deg,var(--aqua),var(--yellow),var(--orange)); z-index:200; transition:width .1s}
+.page{max-width:920px; margin:0 auto; padding:0 24px 120px}
+.toc{
+  position:fixed; top:110px; inset-inline-start:22px; width:220px;
+  background:var(--bg1); border:1px solid var(--bg3); border-radius:10px;
+  padding:16px; font-size:13.5px; max-height:70vh; overflow-y:auto;
+}
+.toc-title{color:var(--grey); font-size:11px; letter-spacing:1px; text-transform:uppercase; margin-bottom:10px; font-family:var(--mono)}
+.toc a{display:block; color:var(--fg-dim); text-decoration:none; padding:5px 0; border-inline-start:2px solid transparent; padding-inline-start:10px; margin-inline-start:-1px; transition:.15s}
+.toc a:hover{color:var(--fg)}
+.toc a.active{color:var(--yellow); border-inline-start-color:var(--yellow)}
+@media (max-width:1300px){ .toc{display:none} }
+.hero{padding:70px 0 40px; border-bottom:1px solid var(--bg3); margin-bottom:50px}
+.hero-badge{display:inline-flex; align-items:center; gap:8px; font-family:var(--mono); font-size:12.5px; color:var(--bg0-h); background:var(--yellow); padding:5px 12px; border-radius:100px; font-weight:700; letter-spacing:.5px}
+.hero h1{font-size:2.5rem; margin:22px 0 6px; color:var(--fg); line-height:1.35}
+.hero .en-title{font-family:var(--mono); color:var(--grey); font-size:14px; direction:ltr; text-align:right; margin-bottom:22px}
+.hero p.lead{color:var(--fg-dim); font-size:18px; max-width:640px}
+.hero-svg{margin-top:32px}
+.glossary{display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:10px; margin:24px 0}
+.gterm{background:var(--bg1); border:1px solid var(--bg3); border-radius:8px; padding:12px 14px}
+.gterm b{color:var(--aqua); font-family:var(--mono); font-size:13px; display:block; margin-bottom:4px; direction:ltr; text-align:right}
+.gterm span{color:var(--fg-dim); font-size:14.5px}
+section.chapter-section{margin:56px 0}
+.section-eyebrow{font-family:var(--mono); color:var(--grey); font-size:12.5px; letter-spacing:1px; margin-bottom:6px}
+h2{font-size:1.7rem; color:var(--fg); border-inline-start:4px solid var(--yellow); padding-inline-start:14px; margin:0 0 22px}
+h3{font-size:1.25rem; color:var(--aqua); margin:34px 0 12px}
+p{color:var(--fg-dim); margin:14px 0}
+p b, li b{color:var(--fg); font-weight:700}
+strong.term{color:var(--yellow); font-weight:700}
+code.inline{font-family:var(--mono); background:var(--bg2); color:var(--orange); padding:1px 6px; border-radius:5px; font-size:.88em; direction:ltr; unicode-bidi:embed}
+ul, ol{color:var(--fg-dim); padding-inline-start:24px}
+li{margin:8px 0}
+a{color:var(--blue)}
+.figure{margin:24px 0}
+.figure-cap{font-family:var(--mono); font-size:13px; color:var(--fg-dim); margin-bottom:8px}
+.fig-num{color:var(--bg0-h); background:var(--aqua); padding:2px 8px; border-radius:5px; font-weight:700; margin-inline-end:8px}
+pre.code-block{
+  background:var(--bg1); border:1px solid var(--bg3); border-inline-start:3px solid var(--aqua);
+  border-radius:8px; padding:18px 20px; overflow-x:auto; direction:ltr; text-align:left;
+}
+pre.code-block code{font-family:var(--mono); font-size:13.3px; color:#ebdbb2; line-height:1.65; white-space:pre}
+.cmt{color:var(--grey); font-style:italic}
+.callout{border-radius:10px; padding:18px 20px; margin:22px 0; border:1px solid var(--bg3)}
+.callout-title{font-family:var(--mono); font-weight:700; font-size:13px; letter-spacing:.5px; margin-bottom:8px; display:flex; align-items:center; gap:8px}
+.callout-body{color:var(--fg-dim)}
+.callout-body p{margin:6px 0}
+.callout.tip{background:rgba(216,166,87,.08); border-color:rgba(216,166,87,.35)}
+.callout.tip .callout-title{color:var(--yellow)}
+.callout.crux{background:rgba(234,105,98,.08); border-color:rgba(234,105,98,.35)}
+.callout.crux .callout-title{color:var(--red)}
+.callout.note{background:rgba(125,174,163,.08); border-color:rgba(125,174,163,.35)}
+.callout.note .callout-title{color:var(--blue)}
+.callout.warning{background:rgba(231,138,78,.08); border-color:rgba(231,138,78,.35)}
+.callout.warning .callout-title{color:var(--orange)}
+.table-wrap{overflow-x:auto; margin:22px 0}
+table.trace{border-collapse:collapse; width:100%; font-family:var(--mono); direction:ltr; text-align:center; font-size:12.5px}
+table.trace th, table.trace td{border:1px solid var(--bg3); padding:7px 9px; white-space:nowrap}
+table.trace th{background:var(--bg2); color:var(--yellow)}
+table.trace td{background:var(--bg1); color:var(--fg-dim)}
+table.trace td.run{color:var(--bg0-h); background:var(--aqua); font-weight:700}
+table.trace td.sleep{color:var(--fg-dim); background:var(--bg0)}
+table.trace td.comment{direction:rtl; text-align:right; font-family:var(--sans); color:var(--orange); font-size:12.5px}
+.diagram{background:var(--bg1); border:1px solid var(--bg3); border-radius:10px; padding:24px; margin:24px 0}
+.diagram svg{width:100%; height:auto; display:block}
+.hw-list{counter-reset:hw}
+.hw-item{position:relative; background:var(--bg1); border:1px solid var(--bg3); border-radius:8px; padding:14px 18px; margin:10px 0; padding-inline-start:52px; color:var(--fg-dim)}
+.hw-item::before{counter-increment:hw; content:counter(hw); position:absolute; inset-inline-start:14px; top:50%; transform:translateY(-50%); width:26px; height:26px; border-radius:50%; background:var(--bg3); color:var(--yellow); font-family:var(--mono); display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700}
+.hw-item code.inline{font-size:.82em}
+footer{margin-top:80px; padding-top:24px; border-top:1px solid var(--bg3); color:var(--grey); font-size:13.5px; text-align:center}
+footer a{color:var(--aqua)}
+</style>
+</head>
+<body>
+
+<div id="progress"></div>
+<nav class="toc">
+  <div class="toc-title">المحتويات</div>
+  <a href="#intro">المقدمة والتحدي</a>
+  <a href="#definition">تعريف الـCV والعمليات</a>
+  <a href="#pc">مشكلة المنتج/المستهلك</a>
+  <a href="#correct">الحل الصحيح الكامل</a>
+  <a href="#covering">Covering Conditions</a>
+  <a href="#summary">الخلاصة</a>
+  <a href="#homework">أسئلة الواجب</a>
+</nav>
+<div class="page">
+  <div class="hero">
+    <span class="hero-badge">OSTEP · الفصل 30</span>
+    <h1>متغيرات الشرط (Condition Variables)</h1>
+    <div class="en-title">Condition Variables</div>
+    <p class="lead">
+      الأقفال (locks) لوحدها مش كفاية. أحيانًا الـ<code class="inline">thread</code> محتاج
+      "ينام" لحد ما شرط معيّن يبقى صح — زي parent بينتظر child يخلص. الفصل ده بيقدّم
+      <b>condition variable</b>: أداة تخلي الـthread ينام من غير ما يحرق الـCPU وهو بيلف
+      فاضي، وتوريك كمان أد إيه سهل تكتب bug خطير وانت بتستخدمها لو مش حاسب.
+    </p>
+    <div class="hero-svg diagram"><svg viewBox="0 0 800 220" xmlns="http://www.w3.org/2000/svg" font-family="JetBrains Mono">
+  <text x="170" y="26" text-anchor="middle" font-size="12" fill="#7c6f64">قبل ما ننده wait()</text>
+  <g stroke-width="2.5" fill="none">
+    <path d="M30,60 C90,60 120,95 170,95" stroke="#ea6962"/>
+    <path d="M30,140 C90,140 120,95 170,95" stroke="#7daea3"/>
+  </g>
+  <circle cx="30" cy="60" r="4" fill="#ea6962"/>
+  <circle cx="30" cy="140" r="4" fill="#7daea3"/>
+  <text x="80" y="75" fill="#ea6962" font-size="11">busy-spin (بيلف ويحرق CPU)</text>
+  <text x="80" y="155" fill="#7daea3" font-size="11">wait() (بينام مجانًا)</text>
+
+  <line x1="400" y1="20" x2="400" y2="200" stroke="#45403d" stroke-dasharray="4 5"/>
+
+  <text x="620" y="26" text-anchor="middle" font-size="12" fill="#7c6f64">condition variable = طابور انتظار</text>
+  <rect x="470" y="60" width="70" height="110" rx="10" fill="#282828" stroke="#d8a657" stroke-width="2"/>
+  <text x="505" y="50" text-anchor="middle" fill="#d8a657" font-size="11">cond_t c</text>
+  <circle cx="505" cy="85" r="10" fill="#3c3836" stroke="#d3869b" stroke-width="1.5"/>
+  <text x="505" y="89" text-anchor="middle" fill="#d3869b" font-size="10">T1</text>
+  <circle cx="505" cy="115" r="10" fill="#3c3836" stroke="#a9b665" stroke-width="1.5"/>
+  <text x="505" y="119" text-anchor="middle" fill="#a9b665" font-size="10">T2</text>
+  <circle cx="505" cy="145" r="10" fill="#3c3836" stroke="#7daea3" stroke-width="1.5"/>
+  <text x="505" y="149" text-anchor="middle" fill="#7daea3" font-size="10">T3</text>
+  <path d="M540,85 C600,60 650,60 690,60" stroke="#d8a657" stroke-width="2" fill="none" marker-end="url(#a3)"/>
+  <text x="700" y="63" fill="#d8a657" font-size="11">signal() بيصحي واحد</text>
+  <defs><marker id="a3" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#d8a657"/></marker></defs>
+</svg></div>
+  </div>
+
+
+<section class="chapter-section" id="intro">
+  <div class="section-eyebrow">01 · البداية</div>
+  <h2>المقدمة والتحدي</h2>
+  <p>
+    لحد دلوقتي عرفنا الـ<code class="inline">lock</code> وشفنا إزاي بيتبني صح بمساعدة
+    الـhardware والـOS. لكن الأقفال مش الأداة الوحيدة اللي محتاجينها عشان نكتب برامج
+    متزامنة. في حالات كتير، الـthread عايز يتأكد إن شرط معيّن بقى صح <b>قبل</b> ما يكمل —
+    مثلاً parent thread عايز يتأكد إن الـchild thread خلص قبل ما يكمل هو (ده غالبًا بيتسمى
+    <code class="inline">join()</code>). السؤال: إزاي ننفذ الانتظار ده؟
+  </p>
+  <div class="figure">
+  <div class="figure-cap"><span class="fig-num">شكل 30.1</span> — Parent بينتظر الـchild — بس إزاي؟ (الكود ده لسه ناقص)</div>
+  <pre class="code-block"><code>void *child(void *arg) {
+    printf("child\n");
+    <span class="cmt">// XXX إزاي نقول إننا خلصنا؟</span>
+    return NULL;
+}
+
+int main(int argc, char *argv[]) {
+    printf("parent: begin\n");
+    pthread_t c;
+    Pthread_create(&amp;c, NULL, child, NULL); <span class="cmt">// child</span>
+    <span class="cmt">// XXX إزاي ننتظر الـchild؟</span>
+    printf("parent: end\n");
+    return 0;
+}</code></pre>
+</div>
+  <p>
+    الناتج اللي عايزينه واضح: <code class="inline">parent: begin</code> ثم
+    <code class="inline">child</code> ثم <code class="inline">parent: end</code> — بالترتيب
+    ده بالظبط، مهما كان الـscheduling.
+  </p>
+  <h3>محاولة أولى: Busy-waiting بمتغيّر مشترك</h3>
+  <p>
+    أبسط حل ممكن يخطر على بالك: متغيّر <code class="inline">done</code> مشترك، الـparent
+    يفضل يعمل عليه <code class="inline">while (done == 0) ;</code> (لف فاضي) لحد ما
+    الـchild يخلص ويغيّر قيمته.
+  </p>
+  <div class="figure">
+  <div class="figure-cap"><span class="fig-num">شكل 30.2</span> — Parent بينتظر الـchild — حل بالـSpin</div>
+  <pre class="code-block"><code>volatile int done = 0;
+
+void *child(void *arg) {
+    printf("child\n");
+    done = 1;
+    return NULL;
+}
+
+int main(int argc, char *argv[]) {
+    printf("parent: begin\n");
+    pthread_t c;
+    Pthread_create(&amp;c, NULL, child, NULL); <span class="cmt">// child</span>
+    while (done == 0)
+        ; <span class="cmt">// spin (لف فاضي)</span>
+    printf("parent: end\n");
+    return 0;
+}</code></pre>
+</div>
+  <p>
+    الحل ده هيشتغل فعلاً، لكنه <b>مضيعة رهيبة</b> — الـparent بيقعد يلف ويستهلك CPU كامل
+    وهو مش بيعمل أي حاجة مفيدة أصلاً، لحد ما الـchild يخلص. لو الانتظار طال، ده هدر حقيقي
+    لموارد المعالج ممكن يبطّئ threads تانية شغالة على نفس الجهاز.
+  </p>
+  <div class="callout crux">
+  <div class="callout-title">CRUX: إزاي ننتظر شرط معيّن؟</div>
+  <div class="callout-body"><p>في البرامج متعددة الـthreads، غالبًا محتاجين thread ينتظر شرط معيّن يبقى صح قبل ما يكمّل. الطريقة البسيطة — إنك تلف (spin) لحد ما الشرط يتحقق — غير فعّالة خالص وبتحرق دورات المعالج، وفي حالات معيّنة ممكن كمان تبقى غلط تمامًا. فإزاي الـthread المفروض ينتظر شرط بطريقة صحيحة وفعّالة؟</p></div>
+</div>
+  <p>
+    اللي إحنا محتاجينه بدل ده: طريقة تخلي الـparent <b>ينام</b> فعليًا لحد ما الشرط اللي
+    بينتظره (إن الـchild خلص مثلاً) يبقى صح — من غير ما يستهلك أي CPU وهو نايم.
+  </p>
+</section>
+
+
+<section class="chapter-section" id="definition">
+  <div class="section-eyebrow">02 · الأداة الجديدة</div>
+  <h2>تعريف الـCondition Variable والعمليات بتاعتها</h2>
+  <p>
+    عشان thread ينام لحد ما شرط يبقى صح، بيستخدم حاجة اسمها
+    <strong class="term">condition variable</strong>. ببساطة، هي <b>طابور انتظار
+    صريح</b> (explicit queue) — أي thread لاقي إن حالة معيّنة (شرط) مش زي ما هو عايز، يقدر
+    "يحط نفسه" في الطابور ده (بالانتظار على الشرط). وأي thread تاني، لما يغيّر الحالة دي،
+    يقدر يصحّي واحد (أو أكتر) من الـthreads النايمة دي (بالإشارة على الشرط). الفكرة أصلها
+    من "الـprivate semaphores" بتاعة Dijkstra، وHoare سمّاها لاحقًا condition variable في
+    شغله على monitors.
+  </p>
+  <p>
+    عشان تعلن condition variable بتكتب حاجة زي
+    <code class="inline">pthread_cond_t c;</code> (ومحتاج طبعًا init صحيح كمان). فيه
+    عمليتين أساسيتين مرتبطين بيها:
+  </p>
+  <ul>
+    <li><code class="inline">wait()</code> — بينفذها الـthread لما عايز ينوّم نفسه.</li>
+    <li><code class="inline">signal()</code> — بينفذها thread غيّر حاجة في البرنامج
+      وعايز يصحّي thread نايم على الشرط ده.</li>
+  </ul>
+  <div class="figure">
+  <div class="figure-cap"><span class="fig-num">شكل posix_sig</span> — توقيع الدالتين في POSIX (هنشير لهم بـwait() وsignal() للاختصار)</div>
+  <pre class="code-block"><code>int pthread_cond_wait(pthread_cond_t *c, pthread_mutex_t *m);
+int pthread_cond_signal(pthread_cond_t *c);</code></pre>
+</div>
+  <p>
+    حاجة مهمة تلاحظها: <code class="inline">wait()</code> بتاخد <b>mutex</b> كمان
+    كباراميتر — وبتفترض إن اللوك ده متاخد (locked) وقت ما تتنده. مسؤولية
+    <code class="inline">wait()</code> إنها تسيب اللوك وتنوّم الـthread <b>في عملية واحدة
+    ذرّية</b> (atomically)؛ ولما الـthread يصحى (بعد ما thread تاني يعمله signal)، لازم
+    <b>يرجع ياخد اللوك تاني</b> قبل ما يرجع للكود اللي نادى عليه. التعقيد ده كله سببه إننا
+    عايزين نمنع race conditions معيّنة من إنها تحصل وقت ما thread بيحاول ينوّم نفسه.
+  </p>
+
+  <h3>الحل الصح لمشكلة الـjoin</h3>
+  <div class="figure">
+  <div class="figure-cap"><span class="fig-num">شكل 30.3</span> — Parent بينتظر الـchild — باستخدام condition variable</div>
+  <pre class="code-block"><code>int done = 0;
+pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t c = PTHREAD_COND_INITIALIZER;
+
+void thr_exit() {
+    Pthread_mutex_lock(&amp;m);
+    done = 1;
+    Pthread_cond_signal(&amp;c);
+    Pthread_mutex_unlock(&amp;m);
+}
+
+void *child(void *arg) {
+    printf("child\n");
+    thr_exit();
+    return NULL;
+}
+
+void thr_join() {
+    Pthread_mutex_lock(&amp;m);
+    while (done == 0)
+        Pthread_cond_wait(&amp;c, &amp;m);
+    Pthread_mutex_unlock(&amp;m);
+}
+
+int main(int argc, char *argv[]) {
+    printf("parent: begin\n");
+    pthread_t p;
+    Pthread_create(&amp;p, NULL, child, NULL);
+    thr_join();
+    printf("parent: end\n");
+    return 0;
+}</code></pre>
+</div>
+  <p>فيه حالتين ممكن يحصلوا هنا:</p>
+  <ol>
+    <li>
+      <b>الـparent يجري الأول:</b> يعمل create للـchild، ويكمل يجري هو (لو معانا processor
+      واحد بس) وينادي على <code class="inline">thr_join()</code> على طول. هيمسك اللوك،
+      يشوف إن <code class="inline">done</code> لسه صفر، وينوّم نفسه بـ
+      <code class="inline">wait()</code> (وده بيسيب اللوك تلقائيًا). لما الـchild يجري
+      أخيرًا، يطبع "child"، وينادي <code class="inline">thr_exit()</code> اللي بتمسك
+      اللوك، تظبط <code class="inline">done</code>، وتعمل signal على الـparent — فيصحى.
+      الـparent هيرجع من <code class="inline">wait()</code> ماسك اللوك، يسيبه، ويطبع
+      "parent: end".
+    </li>
+    <li>
+      <b>الـchild يجري الأول:</b> يظبط <code class="inline">done = 1</code> على طول،
+      وينادي signal عشان يصحّي thread نايم — لكن مفيش حد نايم أصلاً، فالـsignal مالوش أي
+      تأثير وبترجع عادي. بعدين الـparent يجري، ينادي <code class="inline">thr_join()</code>،
+      يلاقي <code class="inline">done</code> بقت 1، فمش بينام أصلاً وبيرجع على طول.
+    </li>
+  </ol>
+  <p>
+    لاحظ إن الـparent استخدم <code class="inline">while</code> بدل
+    <code class="inline">if</code> وهو بيفكّر يستنى ولا لأ. مش شرط منطقيًا هنا، لكنها دايمًا
+    فكرة كويسة — وهنشوف بعد شوية ليه.
+  </p>
+
+  <h3>محاولات غلط — عشان تفهم أهمية كل جزء</h3>
+  <p>
+    ممكن تكون بتتساءل: هل فعلاً محتاجين متغيّر الحالة <code class="inline">done</code>؟
+    خلينا نجرب من غيره:
+  </p>
+  <div class="figure">
+  <div class="figure-cap"><span class="fig-num">شكل 30.4</span> — محاولة غلط: من غير متغيّر حالة</div>
+  <pre class="code-block"><code>void thr_exit() {
+    Pthread_mutex_lock(&amp;m);
+    Pthread_cond_signal(&amp;c);
+    Pthread_mutex_unlock(&amp;m);
+}
+
+void thr_join() {
+    Pthread_mutex_lock(&amp;m);
+    Pthread_cond_wait(&amp;c, &amp;m);
+    Pthread_mutex_unlock(&amp;m);
+}</code></pre>
+</div>
+  <div class="callout warning">
+  <div class="callout-title">ليه دي غلط</div>
+  <div class="callout-body"><p>تخيّل إن الـchild جري فورًا ونادى thr_exit() على طول: هيعمل signal لكن مفيش thread نايم على الشرط أصلاً (لسه محدش وصل لـwait). لما الـparent يجري، هينادي wait() ببساطة ويعلق للأبد — محدش هيصحّيه تاني. من المثال ده تقدر تقدّر أهمية متغيّر الحالة done؛ هو اللي بيسجّل القيمة الفعلية اللي الـthreads مهتمة بيها. النوم والصحيان والقفل كلهم متبنيين حواليه.</p></div>
+</div>
+  <p>وهنا محاولة غلط تانية — نتخيل إننا مش محتاجين نمسك لوك عشان نعمل signal أو wait:</p>
+  <div class="figure">
+  <div class="figure-cap"><span class="fig-num">شكل 30.5</span> — محاولة غلط: من غير لوك (كود توضيحي بس، مش حقيقي)</div>
+  <pre class="code-block"><code>void thr_exit() {
+    done = 1;
+    Pthread_cond_signal(&amp;c);
+}
+
+void thr_join() {
+    if (done == 0)
+        Pthread_cond_wait(&amp;c);
+}</code></pre>
+</div>
+  <div class="callout warning">
+  <div class="callout-title">race condition دقيقة</div>
+  <div class="callout-body"><p>لو الـparent نادى thr_join() وشاف إن done لسه صفر، هيحاول ينام. لكن قبل ما ينادي wait() بالظبط، بيتقاطع (interrupted) والـchild يجري: بيغيّر done لـ1 وبيعمل signal — لكن مفيش حد نايم لسه فمفيش حد بيصحى. لما الـparent يرجع يجري، ينام للأبد. حزين فعلاً.</p></div>
+</div>
+
+  <div class="callout tip">
+  <div class="callout-title">TIP: امسك اللوك دايمًا وانت بتعمل Signal</div>
+  <div class="callout-body"><p>مش شرط دايمًا للصحة، لكن الأبسط والأضمن إنك تمسك اللوك وانت بتعمل signal. المثال اللي فات فيه حالة لازم فيها تمسك اللوك، وفيه حالات تانية ممكن تسيبه، بس الأفضل تتجنب ده. فببساطة: امسك اللوك وانت بتنادي signal.</p><p>العكس بالنسبة للـwait مش مجرد نصيحة — ده مفروض إجباريًا بحكم دلالة wait نفسها، لأنها دايمًا (أ) بتفترض إن اللوك متاخد وقت ما تتنده، (ب) بتسيبه وهي بتنوّم الـcaller، (ج) بترجع تاخده تاني قبل ما ترجع. يعني: امسك اللوك وانت بتنادي signal أو wait، وهتفضل مطمّن.</p></div>
+</div>
+</section>
+
+
+<section class="chapter-section" id="pc">
+  <div class="section-eyebrow">03 · المثال الكبير</div>
+  <h2>مشكلة المنتج/المستهلك (Producer/Consumer)</h2>
+  <p>
+    المشكلة دي معروفة كمان باسم <b>bounded buffer problem</b>، وأول من طرحها كان Dijkstra.
+    تخيّل كذا <b>producer thread</b> بتنتج قيم وتحطها في buffer، وكذا
+    <b>consumer thread</b> بتاخد القيم دي من الـbuffer وتستهلكها. الترتيبة دي موجودة في
+    أنظمة حقيقية كتير — مثلاً في web server متعدد الـthreads، producer بيحط HTTP requests
+    في work queue، وconsumer threads بتاخدها وتعالجها. حتى لما تعمل
+    <code class="inline">grep foo file.txt | wc -l</code> في الـshell، إنت بتستخدم
+    bounded buffer فعليًا: <code class="inline">grep</code> هو الـproducer،
+    <code class="inline">wc</code> هو الـconsumer، وبينهم UNIX pipe.
+  </p>
+  <div class="diagram"><svg viewBox="0 0 720 160" xmlns="http://www.w3.org/2000/svg" font-family="JetBrains Mono">
+  <rect x="30" y="55" width="130" height="50" rx="8" fill="#3c3836" stroke="#7daea3" stroke-width="1.5"/>
+  <text x="95" y="85" text-anchor="middle" fill="#7daea3" font-size="13">producer</text>
+  <rect x="300" y="45" width="120" height="70" rx="8" fill="#282828" stroke="#d8a657" stroke-width="2"/>
+  <text x="360" y="75" text-anchor="middle" fill="#d8a657" font-size="12">buffer</text>
+  <text x="360" y="95" text-anchor="middle" fill="#7c6f64" font-size="10">count</text>
+  <rect x="560" y="55" width="130" height="50" rx="8" fill="#3c3836" stroke="#d3869b" stroke-width="1.5"/>
+  <text x="625" y="85" text-anchor="middle" fill="#d3869b" font-size="13">consumer</text>
+  <path d="M160,80 C230,80 230,80 298,80" stroke="#7daea3" stroke-width="2" fill="none" marker-end="url(#a4)"/>
+  <path d="M420,80 C490,80 490,80 558,80" stroke="#d3869b" stroke-width="2" fill="none" marker-end="url(#a4)"/>
+  <defs><marker id="a4" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#928374"/></marker></defs>
+  <text x="230" y="65" text-anchor="middle" fill="#7c6f64" font-size="11">put()</text>
+  <text x="490" y="65" text-anchor="middle" fill="#7c6f64" font-size="11">get()</text>
+  <path d="M300,120 C300,140 420,140 420,120" stroke="#a9b665" stroke-width="1.5" fill="none" stroke-dasharray="3 3" marker-end="url(#a5)"/>
+  <text x="360" y="150" text-anchor="middle" fill="#a9b665" font-size="10">signal(fill) لما يحط</text>
+  <path d="M420,35 C420,15 300,15 300,35" stroke="#ea6962" stroke-width="1.5" fill="none" stroke-dasharray="3 3" marker-end="url(#a5)"/>
+  <text x="360" y="15" text-anchor="middle" fill="#ea6962" font-size="10">signal(empty) لما ياخد</text>
+  <defs><marker id="a5" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#928374"/></marker></defs>
+</svg></div>
+
+  <h3>1. buffer بخانة واحدة بس</h3>
+  <p>
+    نبدأ بأبسط نسخة: خانة واحدة (<code class="inline">int buffer</code>) و
+    <code class="inline">count</code> بيقول هي فاضية ولا لأ.
+  </p>
+  <div class="figure">
+  <div class="figure-cap"><span class="fig-num">شكل 30.6</span> — دوال put و get — النسخة الأولى</div>
+  <pre class="code-block"><code>int buffer;
+int count = 0; <span class="cmt">// في الأول، فاضي</span>
+
+void put(int value) {
+    assert(count == 0);
+    count = 1;
+    buffer = value;
+}
+
+int get() {
+    assert(count == 1);
+    count = 0;
+    return buffer;
+}</code></pre>
+</div>
+  <div class="figure">
+  <div class="figure-cap"><span class="fig-num">شكل 30.7</span> — threads المنتج والمستهلك — النسخة الأولى</div>
+  <pre class="code-block"><code>void *producer(void *arg) {
+    int i;
+    int loops = (int) arg;
+    for (i = 0; i &lt; loops; i++) {
+        put(i);
+    }
+}
+
+void *consumer(void *arg) {
+    while (1) {
+        int tmp = get();
+        printf("%d\n", tmp);
+    }
+}</code></pre>
+</div>
+
+  <h3>2. أول محاولة (غلط): CV واحد + if</h3>
+  <p>
+    ببساطة إحاطة الكود بلوك مش كفاية هنا — محتاجين condition variable. المحاولة الأولى:
+    CV واحد اسمه <code class="inline">cond</code>.
+  </p>
+  <div class="figure">
+  <div class="figure-cap"><span class="fig-num">شكل 30.8</span> — محاولة أولى (فيها مشكلتين) — CV واحد وif</div>
+  <pre class="code-block"><code>int loops; <span class="cmt">// لازم تتظبط في مكان ما...</span>
+cond_t cond;
+mutex_t mutex;
+
+void *producer(void *arg) {
+    int i;
+    for (i = 0; i &lt; loops; i++) {
+        Pthread_mutex_lock(&amp;mutex);       <span class="cmt">// p1</span>
+        if (count == 1)                    <span class="cmt">// p2</span>
+            Pthread_cond_wait(&amp;cond, &amp;mutex); <span class="cmt">// p3</span>
+        put(i);                             <span class="cmt">// p4</span>
+        Pthread_cond_signal(&amp;cond);         <span class="cmt">// p5</span>
+        Pthread_mutex_unlock(&amp;mutex);       <span class="cmt">// p6</span>
+    }
+}
+
+void *consumer(void *arg) {
+    int i;
+    for (i = 0; i &lt; loops; i++) {
+        Pthread_mutex_lock(&amp;mutex);        <span class="cmt">// c1</span>
+        if (count == 0)                     <span class="cmt">// c2</span>
+            Pthread_cond_wait(&amp;cond, &amp;mutex); <span class="cmt">// c3</span>
+        int tmp = get();                     <span class="cmt">// c4</span>
+        Pthread_cond_signal(&amp;cond);          <span class="cmt">// c5</span>
+        Pthread_mutex_unlock(&amp;mutex);        <span class="cmt">// c6</span>
+        printf("%d\n", tmp);
+    }
+}</code></pre>
+</div>
+  <p>
+    مع producer واحد وconsumer واحد بس، الكود ده شغال تمام. لكن لو زوّدنا العدد (مثلاً
+    consumer تاني)، فيه <b>مشكلتين حرجتين</b>. خلينا نشوف أول واحدة، وعلاقتها بالـ
+    <code class="inline">if</code> قبل الـwait.
+  </p>
+  <p>
+    تخيّل consumer اتنين (Tc1, Tc2) وproducer واحد (Tp). Tc1 يجري الأول، يمسك اللوك، يشوف
+    مفيش داتا، وينام. Tp يجري، يشوف الـbuffer مش مليان، يحط قيمة، وينادي
+    <code class="inline">signal</code> — ده بيحرك Tc1 من النوم لطابور "جاهز" (ready)، لكنه
+    <b>لسه ما جريش فعليًا</b>. Tp يكمل لفة تانية ويلاقي الـbuffer مليان فينام هو كمان.
+    وهنا بالظبط المشكلة: consumer <b>تاني</b> (Tc2) بيلحق ويستهلك القيمة الوحيدة الموجودة
+    قبل ما Tc1 يجري أصلاً! لما Tc1 يجري أخيرًا، هيرجع من wait() ويحاول ياخد قيمة —
+    <b>لكن مفيش قيمة خالص</b>. الـassertion هتفشل.
+  </p>
+  <div class="figure">
+      <div class="figure-cap">شكل 30.9 — تتبّع الحل المكسور (النسخة 1): Tc2 بتسبق Tc1</div>
+      <div class="table-wrap"><table class="trace">
+        <tr><th>Tc1</th><th>Tc2</th><th>Tp</th><th>Count</th><th>ملاحظة</th></tr>
+        <tr><td class="run">c1‑تنفيذ</td><td class="">جاهز</td><td class="">جاهز</td><td>0</td><td class="comment"></td></tr><tr><td class="run">c2‑تنفيذ</td><td class="">جاهز</td><td class="">جاهز</td><td>0</td><td class="comment"></td></tr><tr><td class="sleep">c3‑نايم</td><td class="">جاهز</td><td class="">جاهز</td><td>0</td><td class="comment">مفيش حاجة تتاخد</td></tr><tr><td class="sleep">نايم</td><td class="">جاهز</td><td class="run">p1‑تنفيذ</td><td>0</td><td class="comment"></td></tr><tr><td class="sleep">نايم</td><td class="">جاهز</td><td class="run">p2‑تنفيذ</td><td>0</td><td class="comment"></td></tr><tr><td class="sleep">نايم</td><td class="">جاهز</td><td class="run">p4‑تنفيذ</td><td>1</td><td class="comment">البافر بقى مليان</td></tr><tr><td class="">جاهز</td><td class="">جاهز</td><td class="run">p5‑تنفيذ</td><td>1</td><td class="comment">Tc1 اتصحّى</td></tr><tr><td class="">جاهز</td><td class="">جاهز</td><td class="run">p6‑تنفيذ</td><td>1</td><td class="comment"></td></tr><tr><td class="">جاهز</td><td class="">جاهز</td><td class="run">p1‑تنفيذ</td><td>1</td><td class="comment"></td></tr><tr><td class="">جاهز</td><td class="">جاهز</td><td class="run">p2‑تنفيذ</td><td>1</td><td class="comment"></td></tr><tr><td class="">جاهز</td><td class="">جاهز</td><td class="sleep">p3‑نايم</td><td>1</td><td class="comment">البافر مليان؛ ينام</td></tr><tr><td class="">جاهز</td><td class="run">c1‑تنفيذ</td><td class="sleep">نايم</td><td>1</td><td class="comment">Tc2 بتلحس جوا...</td></tr><tr><td class="">جاهز</td><td class="run">c2‑تنفيذ</td><td class="sleep">نايم</td><td>1</td><td class="comment"></td></tr><tr><td class="">جاهز</td><td class="run">c4‑تنفيذ</td><td class="sleep">نايم</td><td>0</td><td class="comment">...وبتاخد القيمة</td></tr><tr><td class="">جاهز</td><td class="run">c5‑تنفيذ</td><td class="">جاهز</td><td>0</td><td class="comment">Tp اتصحّى</td></tr><tr><td class="">جاهز</td><td class="run">c6‑تنفيذ</td><td class="">جاهز</td><td>0</td><td class="comment"></td></tr><tr><td class="run">c4‑تنفيذ</td><td class="">جاهز</td><td class="">جاهز</td><td>0</td><td class="comment">ولا! مفيش داتا</td></tr>
+      </table></div>
+    </div>
+  <p>
+    السبب في المشكلة بسيط: بين لحظة ما Tp صحّى Tc1، ولحظة ما Tc1 فعليًا جري، حالة الـbuffer
+    اتغيّرت (بسبب Tc2). يعني الـsignal مجرد "تلميح" إن حاجة اتغيّرت، مش ضمان إن الحالة لسه
+    زي ما كانت وقت ما الـthread المصحّى هيجري فعليًا. التفسير ده لمعنى الـsignal معروف باسم
+    <strong class="term">Mesa semantics</strong> (نسبة لأول نظام بحثي بناها كده). في المقابل
+    فيه <strong class="term">Hoare semantics</strong> اللي بتضمن إن الـthread المصحّى
+    هيجري <b>فورًا</b> — لكنها أصعب في البناء. تقريبًا كل نظام حقيقي موجود بيستخدم Mesa
+    semantics.
+  </p>
+
+  <h3>3. أحسن، بس لسه مكسور: While بدل If</h3>
+  <p>
+    الحل لأول مشكلة سهل: نبدّل <code class="inline">if</code> بـ
+    <code class="inline">while</code>. كده لما Tc1 يصحى، هو (وهو ماسك اللوك) بيتأكد من
+    الشرط <b>تاني من الأول</b>؛ لو لقى الـbuffer لسه فاضي، بينام تاني وخلاص.
+  </p>
+  <div class="figure">
+  <div class="figure-cap"><span class="fig-num">شكل 30.10</span> — مع While بدل If — لسه فيها مشكلة تانية</div>
+  <pre class="code-block"><code>int loops;
+cond_t cond;
+mutex_t mutex;
+
+void *producer(void *arg) {
+    int i;
+    for (i = 0; i &lt; loops; i++) {
+        Pthread_mutex_lock(&amp;mutex);        <span class="cmt">// p1</span>
+        while (count == 1)                  <span class="cmt">// p2  &lt;-- if بقت while</span>
+            Pthread_cond_wait(&amp;cond, &amp;mutex); <span class="cmt">// p3</span>
+        put(i);                              <span class="cmt">// p4</span>
+        Pthread_cond_signal(&amp;cond);          <span class="cmt">// p5</span>
+        Pthread_mutex_unlock(&amp;mutex);        <span class="cmt">// p6</span>
+    }
+}
+
+void *consumer(void *arg) {
+    int i;
+    for (i = 0; i &lt; loops; i++) {
+        Pthread_mutex_lock(&amp;mutex);         <span class="cmt">// c1</span>
+        while (count == 0)                   <span class="cmt">// c2  &lt;-- if بقت while</span>
+            Pthread_cond_wait(&amp;cond, &amp;mutex); <span class="cmt">// c3</span>
+        int tmp = get();                      <span class="cmt">// c4</span>
+        Pthread_cond_signal(&amp;cond);           <span class="cmt">// c5</span>
+        Pthread_mutex_unlock(&amp;mutex);         <span class="cmt">// c6</span>
+        printf("%d\n", tmp);
+    }
+}</code></pre>
+</div>
+  <p>
+    بس لسه فيه bug تانية، وليها علاقة بإننا بنستخدم <b>CV واحد بس</b>. تخيّل consumer
+    اتنين (Tc1, Tc2) بينام الاتنين الأول (مفيش داتا). Tp يجري، يحط قيمة، يصحّي واحد
+    (يفترض Tc1). Tp بعدين يحاول يحط قيمة تانية، يلاقي البافر مليان، فينام هو كمان — دلوقتي
+    فيه thread واحد جاهز (Tc1) وتنين نايمين (Tc2 وTp).
+  </p>
+  <p>
+    Tc1 يصحى، يتأكد من الشرط تاني، يلاقي فيه داتا، ياخدها، وينادي
+    <code class="inline">signal</code>. بس مين هيصحّى؟ المفروض يصحّي الـproducer (لأنه هو
+    اللي محتاج يعرف إن مكان فضي). لكن لو صحّى Tc2 بدل كده (وارد جدًا حسب إدارة طابور
+    الانتظار)، فـTc2 هيصحى، يلاقي الـbuffer فاضي، وينام تاني. والـproducer، اللي معاه قيمة
+    عايز يحطها، فاضل نايم للأبد. والنتيجة: <b>الكل نايم</b> — bug واضح.
+  </p>
+  <div class="figure">
+      <div class="figure-cap">شكل 30.11 — تتبّع الحل المكسور (النسخة 2): الكل بينام</div>
+      <div class="table-wrap"><table class="trace">
+        <tr><th>Tc1</th><th>Tc2</th><th>Tp</th><th>Count</th><th>ملاحظة</th></tr>
+        <tr><td class="run">c1‑تنفيذ</td><td class="">جاهز</td><td class="">جاهز</td><td>0</td><td class="comment"></td></tr><tr><td class="run">c2‑تنفيذ</td><td class="">جاهز</td><td class="">جاهز</td><td>0</td><td class="comment"></td></tr><tr><td class="sleep">c3‑نايم</td><td class="">جاهز</td><td class="">جاهز</td><td>0</td><td class="comment">مفيش حاجة تتاخد</td></tr><tr><td class="sleep">نايم</td><td class="run">c1‑تنفيذ</td><td class="">جاهز</td><td>0</td><td class="comment"></td></tr><tr><td class="sleep">نايم</td><td class="run">c2‑تنفيذ</td><td class="">جاهز</td><td>0</td><td class="comment"></td></tr><tr><td class="sleep">نايم</td><td class="sleep">c3‑نايم</td><td class="">جاهز</td><td>0</td><td class="comment">مفيش حاجة تتاخد</td></tr><tr><td class="sleep">نايم</td><td class="sleep">نايم</td><td class="run">p1‑تنفيذ</td><td>0</td><td class="comment"></td></tr><tr><td class="sleep">نايم</td><td class="sleep">نايم</td><td class="run">p2‑تنفيذ</td><td>0</td><td class="comment"></td></tr><tr><td class="sleep">نايم</td><td class="sleep">نايم</td><td class="run">p4‑تنفيذ</td><td>1</td><td class="comment">البافر بقى مليان</td></tr><tr><td class="">جاهز</td><td class="sleep">نايم</td><td class="run">p5‑تنفيذ</td><td>1</td><td class="comment">Tc1 اتصحّى</td></tr><tr><td class="">جاهز</td><td class="sleep">نايم</td><td class="run">p6‑تنفيذ</td><td>1</td><td class="comment"></td></tr><tr><td class="">جاهز</td><td class="sleep">نايم</td><td class="run">p1‑تنفيذ</td><td>1</td><td class="comment"></td></tr><tr><td class="">جاهز</td><td class="sleep">نايم</td><td class="run">p2‑تنفيذ</td><td>1</td><td class="comment"></td></tr><tr><td class="">جاهز</td><td class="sleep">نايم</td><td class="sleep">p3‑نايم</td><td>1</td><td class="comment">لازم ينام (مليان)</td></tr><tr><td class="run">c2‑تنفيذ</td><td class="sleep">نايم</td><td class="sleep">نايم</td><td>1</td><td class="comment">بيتأكد من الشرط تاني</td></tr><tr><td class="run">c4‑تنفيذ</td><td class="sleep">نايم</td><td class="sleep">نايم</td><td>0</td><td class="comment">Tc1 بياخد القيمة</td></tr><tr><td class="run">c5‑تنفيذ</td><td class="">جاهز</td><td class="sleep">نايم</td><td>0</td><td class="comment">للأسف! صحّى Tc2</td></tr><tr><td class="run">c6‑تنفيذ</td><td class="">جاهز</td><td class="sleep">نايم</td><td>0</td><td class="comment"></td></tr><tr><td class="run">c1‑تنفيذ</td><td class="">جاهز</td><td class="sleep">نايم</td><td>0</td><td class="comment"></td></tr><tr><td class="run">c2‑تنفيذ</td><td class="">جاهز</td><td class="sleep">نايم</td><td>0</td><td class="comment"></td></tr><tr><td class="sleep">c3‑نايم</td><td class="">جاهز</td><td class="sleep">نايم</td><td>0</td><td class="comment">مفيش حاجة تتاخد</td></tr><tr><td class="sleep">نايم</td><td class="run">c2‑تنفيذ</td><td class="sleep">نايم</td><td>0</td><td class="comment"></td></tr><tr><td class="sleep">نايم</td><td class="sleep">c3‑نايم</td><td class="sleep">نايم</td><td>0</td><td class="comment">الكل نايم...</td></tr>
+      </table></div>
+    </div>
+  <p>
+    الحل: الـsignaling لازم يبقى <b>أكثر تحديدًا</b>. consumer مفروض ميصحّيش consumer تاني،
+    غير الـproducer بس — والعكس صحيح.
+  </p>
+
+  <h3>4. الحل: اتنين CV بدل واحد</h3>
+  <p>
+    الحل بسيط برضو: بدل CV واحد، نستخدم <b>اتنين</b> — واحد لكل اتجاه إشارة. Producer
+    threads بينتظروا على <code class="inline">empty</code> ويعملوا signal على
+    <code class="inline">fill</code>. Consumer threads بالعكس بالظبط: بينتظروا على
+    <code class="inline">fill</code> ويعملوا signal على <code class="inline">empty</code>.
+  </p>
+  <div class="figure">
+  <div class="figure-cap"><span class="fig-num">شكل 30.12</span> — اتنين CV بدل واحد — الحل لبافر بخانة واحدة</div>
+  <pre class="code-block"><code>int loops;
+cond_t empty, fill;
+mutex_t mutex;
+
+void *producer(void *arg) {
+    int i;
+    for (i = 0; i &lt; loops; i++) {
+        Pthread_mutex_lock(&amp;mutex);
+        while (count == 1)
+            Pthread_cond_wait(&amp;empty, &amp;mutex);
+        put(i);
+        Pthread_cond_signal(&amp;fill);
+        Pthread_mutex_unlock(&amp;mutex);
+    }
+}
+
+void *consumer(void *arg) {
+    int i;
+    for (i = 0; i &lt; loops; i++) {
+        Pthread_mutex_lock(&amp;mutex);
+        while (count == 0)
+            Pthread_cond_wait(&amp;fill, &amp;mutex);
+        int tmp = get();
+        Pthread_cond_signal(&amp;empty);
+        Pthread_mutex_unlock(&amp;mutex);
+        printf("%d\n", tmp);
+    }
+}</code></pre>
+</div>
+  <p>
+    بالطريقة دي، المشكلة التانية بتتحل من الأساس: consumer مستحيل يصحّي consumer تاني
+    بالغلط، وproducer مستحيل يصحّي producer تاني بالغلط — كل واحد بيصحّي النوع التاني بس.
+  </p>
+
+  <div class="callout tip">
+  <div class="callout-title">TIP: استخدم While مش If للشروط</div>
+  <div class="callout-body"><p>لما تتأكد من شرط في برنامج متعدد الـthreads، الـwhile loop دايمًا صح؛ الـif ممكن يبقى صح بس حسب دلالة الـsignaling المستخدمة. فاستخدم while دايمًا وهتفضل في أمان.</p><p>الـwhile برضو بيتعامل مع حالة الـ<b>spurious wakeups</b> — في بعض مكتبات الـthreads، ممكن يصحى thread من غير أي signal فعلي حصل، بسبب تفاصيل في التنفيذ الداخلي. الـwhile loop بيتأكد من الشرط تاني في كل الحالات، فبيغطي الحالة دي تلقائيًا.</p></div>
+</div>
+</section>
+
+
+<section class="chapter-section" id="correct">
+  <div class="section-eyebrow">04 · التعميم</div>
+  <h2>الحل الصحيح الكامل</h2>
+  <p>
+    عندنا دلوقتي حل شغال، لكنه مش عام (general) لسه — بافر بخانة واحدة يعني كل ما ينحط
+    قيمة، الـproducer لازم ينام لحد ما حد ياخدها. التحسين الأخير: نزوّد عدد الخانات، بحيث
+    كذا قيمة تتحط قبل ما ننام، وبالمثل كذا قيمة تتاخد قبل ما ننام. مع producer وconsumer
+    واحد بس، ده بيقلل الـcontext switches؛ ومع أكتر من واحد، بيسمح فعليًا بإنتاج أو استهلاك
+    متوازي، يعني concurrency أعلى.
+  </p>
+  <p>التغيير الأول: شكل الـbuffer نفسه، وباستخدام مؤشرين دائريين بدل خانة واحدة:</p>
+  <div class="figure">
+  <div class="figure-cap"><span class="fig-num">شكل 30.13</span> — دوال put و get الصحيحة — buffer دائري بعدة خانات</div>
+  <pre class="code-block"><code>int buffer[MAX];
+int fill_ptr = 0;
+int use_ptr = 0;
+int count = 0;
+
+void put(int value) {
+    buffer[fill_ptr] = value;
+    fill_ptr = (fill_ptr + 1) % MAX;
+    count++;
+}
+
+int get() {
+    int tmp = buffer[use_ptr];
+    use_ptr = (use_ptr + 1) % MAX;
+    count--;
+    return tmp;
+}</code></pre>
+</div>
+  <p>والتغيير التاني: الشروط اللي بيتأكد منها الـproducer والـconsumer قبل ما ينام أي منهم:</p>
+  <div class="figure">
+  <div class="figure-cap"><span class="fig-num">شكل 30.14</span> — الحل الكامل والصحيح لمشكلة المنتج/المستهلك</div>
+  <pre class="code-block"><code>int loops;
+cond_t empty, fill;
+mutex_t mutex;
+
+void *producer(void *arg) {
+    int i;
+    for (i = 0; i &lt; loops; i++) {
+        Pthread_mutex_lock(&amp;mutex);         <span class="cmt">// p1</span>
+        while (count == MAX)                 <span class="cmt">// p2</span>
+            Pthread_cond_wait(&amp;empty, &amp;mutex); <span class="cmt">// p3</span>
+        put(i);                               <span class="cmt">// p4</span>
+        Pthread_cond_signal(&amp;fill);           <span class="cmt">// p5</span>
+        Pthread_mutex_unlock(&amp;mutex);         <span class="cmt">// p6</span>
+    }
+}
+
+void *consumer(void *arg) {
+    int i;
+    for (i = 0; i &lt; loops; i++) {
+        Pthread_mutex_lock(&amp;mutex);          <span class="cmt">// c1</span>
+        while (count == 0)                    <span class="cmt">// c2</span>
+            Pthread_cond_wait(&amp;fill, &amp;mutex);  <span class="cmt">// c3</span>
+        int tmp = get();                       <span class="cmt">// c4</span>
+        Pthread_cond_signal(&amp;empty);           <span class="cmt">// c5</span>
+        Pthread_mutex_unlock(&amp;mutex);          <span class="cmt">// c6</span>
+        printf("%d\n", tmp);
+    }
+}</code></pre>
+</div>
+  <p>
+    الـproducer بينام بس لو <b>كل</b> الخانات مليانة (<code class="inline">count == MAX</code>)،
+    والـconsumer بينام بس لو <b>كل</b> الخانات فاضية (<code class="inline">count == 0</code>).
+    وبكده اتحلت مشكلة المنتج/المستهلك بشكل كامل وعام.
+  </p>
+</section>
+
+
+<section class="chapter-section" id="covering">
+  <div class="section-eyebrow">05 · حالة خاصة</div>
+  <h2>Covering Conditions</h2>
+  <p>
+    مثال أخير مهم، من ورقة Lampson و Redell عن نظام Pilot — نفس الفريق اللي بنى أول
+    Mesa semantics. المشكلة بتظهر في مكتبة تخصيص ذاكرة (memory allocator) بسيطة متعددة
+    الـthreads.
+  </p>
+  <div class="figure">
+  <div class="figure-cap"><span class="fig-num">شكل 30.15</span> — Covering Conditions — مثال بمخصّص ذاكرة بسيط</div>
+  <pre class="code-block"><code><span class="cmt">// عدد البايتات الفاضية في الـheap</span>
+int bytesLeft = MAX_HEAP_SIZE;
+
+<span class="cmt">// محتاجين لوك و condition variable</span>
+cond_t c;
+mutex_t m;
+
+void *allocate(int size) {
+    Pthread_mutex_lock(&amp;m);
+    while (bytesLeft &lt; size)
+        Pthread_cond_wait(&amp;c, &amp;m);
+    void *ptr = ...; <span class="cmt">// هات ميموري من الـheap</span>
+    bytesLeft -= size;
+    Pthread_mutex_unlock(&amp;m);
+    return ptr;
+}
+
+void free(void *ptr, int size) {
+    Pthread_mutex_lock(&amp;m);
+    <span class="cmt">// رجّع الميموري للـheap</span>
+    bytesLeft += size;
+    Pthread_cond_signal(&amp;c); <span class="cmt">// نصحي مين بالظبط؟؟</span>
+    Pthread_mutex_unlock(&amp;m);
+}</code></pre>
+</div>
+  <p>
+    لما thread ينادي <code class="inline">allocate()</code>، ممكن يحتاج ينتظر لحد ما ذاكرة
+    كفاية تتفرّج. ولما thread ينادي <code class="inline">free()</code>، بيعمل signal إن
+    فيه ذاكرة أكتر بقت متاحة. المشكلة: <b>مين بالظبط لازم يصحى؟</b>
+  </p>
+  <p>
+    تخيّل مفيش ذاكرة فاضية خالص. <code class="inline">Ta</code> بينادي
+    <code class="inline">allocate(100)</code>، وبعده <code class="inline">Tb</code>
+    بينادي <code class="inline">allocate(10)</code>. الاتنين بينامو على نفس الشرط. دلوقتي
+    thread تالت <code class="inline">Tc</code> بينادي <code class="inline">free(50)</code>.
+    الـsignal ممكن يصحّي <b>الغلط</b> — لو صحّى <code class="inline">Ta</code> (اللي محتاج
+    100 بايت ومفيش كفاية لسه)، بينما <code class="inline">Tb</code> (اللي محتاج 10 بايت
+    بس وفعلاً كانت هتكفيه) فاضل نايم من غير داعي.
+  </p>
+  <p>
+    الحل المقترح من Lampson و Redell بسيط: استبدل
+    <code class="inline">pthread_cond_signal()</code> بـ
+    <code class="inline">pthread_cond_broadcast()</code>، اللي بتصحّي <b>كل</b>
+    الـthreads النايمة على الشرط. بكده بنضمن إن أي thread المفروض يصحى هيصحى فعلاً. العيب:
+    تأثير سلبي محتمل على الأداء، لأننا ممكن نصحّي threads كتير مالهاش داعي تصحى دلوقتي —
+    هتصحى، تتأكد من شرطها، ولو لسه مش متحقق تنام تاني على طول.
+  </p>
+  <p>
+    Lampson و Redell سمّوا الشرط ده <strong class="term">covering condition</strong>، لأنه
+    بيغطي كل الحالات اللي محتاجة صحيان (بطريقة متحفظة conservative). لو لقيت إن برنامجك
+    مش شغال إلا لما تبدّل الـsignal بـbroadcast (وانت مش متوقع كده)، غالبًا عندك bug
+    حقيقي محتاج يتصلح. لكن في حالات زي الـallocator ده، الـbroadcast فعلاً هو الحل الأبسط
+    والمتاح.
+  </p>
+</section>
+
+
+<section class="chapter-section" id="summary">
+  <div class="section-eyebrow">06 · الخلاصة</div>
+  <h2>الخلاصة</h2>
+  <p>
+    شفنا في الفصل ده أداة تزامن مهمة تانية غير الأقفال: <b>condition variables</b>.
+    بالسماح لـthread إنه ينام لما حالة البرنامج مش زي ما هو عايز، الـCVs بتخلينا نحل
+    مشاكل تزامن مهمة زي مشكلة المنتج/المستهلك الشهيرة، وكمان الـcovering conditions. أهم
+    حاجة تاخدها معاك: امسك اللوك دايمًا وانت بتنادي wait أو signal، واستخدم while مش if،
+    وفكّر كويس في عدد الـCVs اللي محتاجها حسب أنواع الـthreads اللي المفروض تتصحى.
+  </p>
+</section>
+
+
+<section class="chapter-section" id="homework">
+  <div class="section-eyebrow">07 · تطبيق عملي</div>
+  <h2>أسئلة الواجب</h2>
+  <p>
+    الواجب هنا عملي بالكامل: بتاخد كود حقيقي بيستخدم locks وcondition variables لتنفيذ
+    أشكال مختلفة من طابور المنتج/المستهلك، وبتشغّله بإعدادات مختلفة عشان تفهم إيه اللي
+    شغال صح وإيه اللي لأ.
+  </p>
+  <div class="hw-list"><div class="hw-item">ابص على <code class="inline">main-two-cvs-while.c</code> (الحل الشغال). ذاكر الكود كويس؛ هل حاسس إنك فاهم المفروض يحصل إيه لما تشغّله؟</div><div class="hw-item">شغّله بـproducer وconsumer واحد، وخلّي الـproducer ينتج كام قيمة. ابدأ ببافر حجمه 1، وبعدين زوّده. إزاي سلوك الكود بيتغيّر مع بافر أكبر؟</div><div class="hw-item">لو تقدر، شغّل الكود على أنظمة مختلفة (Mac وLinux مثلاً). هل بتلاحظ فرق في السلوك؟</div><div class="hw-item">فكّر في التوقيتات: لو عندك producer واحد وتلات consumers، وبافر بخانة واحدة، وكل consumer بيقف لحظة وقت أخذ القيمة — قد إيه الوقت اللي هياخده التنفيذ؟</div><div class="hw-item">غيّر حجم البافر المشترك لـ3. هل ده هيفرق في الوقت الكلي؟</div><div class="hw-item">غيّر مكان التوقف لنقطة تانية (بعد أخذ القيمة مش قبلها)، وكرر القياس ببافر بخانة واحدة. إيه توقعك للوقت؟</div><div class="hw-item">بافر حجم 3 تاني — إيه توقعك دلوقتي؟</div><div class="hw-item">ابص على <code class="inline">main-one-cv-while.c</code>. تقدر تظبط سيناريو (producer واحد، consumer واحد، بافر حجم 1) يسبب مشكلة في الكود ده؟</div><div class="hw-item">زوّد عدد الـconsumers لاتنين. تقدر تصمم سيناريو يسبب مشكلة دلوقتي؟</div><div class="hw-item">افحص <code class="inline">main-two-cvs-if.c</code>. تقدر تسبب مشكلة فيه؟ جرّب الحالة بconsumer واحد، وبعدين بأكتر من واحد.</div><div class="hw-item">افحص <code class="inline">main-two-cvs-while-extra-unlock.c</code>. إيه المشكلة اللي بتحصل لو سيبت اللوك قبل ما تعمل put أو get؟</div></div>
+</section>
+
+
+<footer>
+  المصدر الأصلي: <a href="https://pages.cs.wisc.edu/~remzi/OSTEP/threads-cv.pdf" target="_blank" rel="noopener">OSTEP — Chapter 30: Condition Variables</a>
+  <br>ملخص ودليل دراسة بالعربي المصري — جزء من رحلة مذاكرة الـOperating Systems.
+</footer>
+</div>
+
+<script>
+(function(){
+  var bar = document.getElementById('progress');
+  function onScroll(){
+    var h = document.documentElement;
+    var scrolled = (h.scrollTop) / (h.scrollHeight - h.clientHeight) * 100;
+    bar.style.width = scrolled + '%';
+  }
+  document.addEventListener('scroll', onScroll);
+  onScroll();
+  var links = Array.prototype.slice.call(document.querySelectorAll('.toc a'));
+  var secs = links.map(function(l){ return document.querySelector(l.getAttribute('href')); }).filter(Boolean);
+  function onSpy(){
+    var pos = window.scrollY + 140;
+    var current = secs[0];
+    secs.forEach(function(s){ if (s.offsetTop <= pos) current = s; });
+    links.forEach(function(l){ l.classList.remove('active'); });
+    var idx = secs.indexOf(current);
+    if (idx >= 0) links[idx].classList.add('active');
+  }
+  document.addEventListener('scroll', onSpy);
+  onSpy();
+})();
+</script>
+</body>
+</html>
