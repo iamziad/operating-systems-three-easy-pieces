@@ -2404,3 +2404,467 @@ int main(int argc, char *argv[])
 : parnet start
 : child
 : parnet end
+
+*** Semaphore - Producer/Consumer (Bounded Buffer) Problem
+
+- الـsemaphores بتحل مشكلة الـproducer/consumer بشكل ابسط, لانها مشكلة بتعتمد علي الـresourse counting (مكان فاضي / مكان مليان) ودي اصلا نقطة قوة الـsemaphore لانها مصممة بـcounter داخلي جاهز.
+
+#+begin_src C :results output
+#include <pthread.h>
+#include <semaphore.h>
+#include <stdio.h>
+
+#define MAX 5
+
+int buffer[MAX];
+int fill_ptr, empty_ptr;
+sem_t empty, fill, mutex;
+
+void *producer(void *arg)
+{
+    for (int i = 0; i < 10; i++) {
+        sem_wait(&empty);
+        sem_wait(&mutex);
+        buffer[fill_ptr] = i;
+        fill_ptr = (fill_ptr + 1) % MAX;
+        sem_post(&mutex);
+        sem_post(&fill);
+    }
+    return NULL;
+}
+
+void *consumer(void *arg)
+{
+    for (int i = 0; i < 10; i++) {
+        sem_wait(&fill);
+        sem_wait(&mutex);
+        int tmp = buffer[empty_ptr];
+        empty_ptr = (empty_ptr + 1) % MAX;
+        printf("consumed: %d\n", tmp);
+        sem_post(&mutex);
+        sem_post(&empty);
+    }
+    return NULL;
+}
+
+int main(int argc, char *argv[])
+{
+    sem_init(&empty, 0, 5);
+    sem_init(&fill, 0, 0);
+    sem_init(&mutex, 0, 1);
+
+    pthread_t t1, t2;
+    pthread_create(&t1, NULL, producer, NULL);
+    pthread_create(&t2, NULL, consumer, NULL);
+    pthread_join(t1, NULL);
+    pthread_join(t2, NULL);
+    return 0;
+}
+#+end_src
+
+#+RESULTS:
+#+begin_example
+consumed: 0
+consumed: 1
+consumed: 2
+consumed: 3
+consumed: 4
+consumed: 5
+consumed: 6
+consumed: 7
+consumed: 8
+consumed: 9
+#+end_example
+
+- هنا هيئنا الـempty ب5 اماكن فاضية, والـfill بـ0 امكان فاضية ودي القيم البديهية في البداية.
+
+#+begin_src C
+// Initializaion
+sem_init(&empty, 0, 5);
+sem_init(&fill, 0, 0);
+sem_init(&mutex, 0, 1);
+#+end_src
+
+- الـproducer هيخش يسأل هل في مكان فاضي؟ طبعا في الاول هيكون في 5 اماكن فاضية فا هيكمل شغل عادي وهيبدأ يملأ الـbuffer.
+- بعد كدا هيزود الاماكن المليانة بـ1 عشان لو الـconsumer يصحي لو كان مستني.
+
+#+begin_src C
+// Producer
+sem_wait(&empty);
+
+buffer[fill_ptr] = i;
+fill_ptr = (fill_ptr + 1) % MAX;
+
+sem_post(&fill);
+#+end_src
+
+
+- الـconsumer هيخش يسأل هل في مكان مليان؟ لو الـproducer حط data في الـbuffer الاماكن المليانة هتكون اكبر من 0 فالـconsumer هيكمل عادي من غير ما يستني.
+- وبعد ما يستهلك الـdata هيزود الاماكن الفاضية بـ1 عشان الـproducer يكمل شغل لو كان واقف.
+
+#+begin_src C
+// Consumer
+sem_wait(&fill);
+
+int tmp = buffer[empty_ptr];
+empty_ptr = (empty_ptr + 1) % MAX;
+printf("consumed: %d\n", tmp);
+
+sem_post(&empty);
+#+end_src
+
+- طبعا جزء الكود اللي بيكتب او بيقرأ من الـbuffer هو critical section ولازم نحميه بـlock, بالذات كمان لو في اكتر من producer و consumer شغالين علي نفس الـbuffer.
+
+#+begin_src C
+sem_wait(&empty);
+////////Critical Section////////
+sem_wait(&mutex);
+buffer[fill_ptr] = i;
+fill_ptr = (fill_ptr + 1) % MAX;
+sem_post(&mutex);
+////////////////////////////////
+sem_post(&fill);
+#+end_src
+
+**** خطأ شائع بيعمل Deadlock
+*اوعي تقفل mutex lock علي اي كود بينادي علي sem_wait*
+
+- لو مثلا الـproducer دخل وقفل الـmutex lock, وبعد كدا لما نادي علي
+
+  =sem_wait(empty)= وطلع مفيش امكان فاضية
+
+  - ساعتها الـproducer هينام وهو قافل الـlock, هيجيي الـconsumer يدخل عشان يفتح الـmutex lock هيلاقي الـproducer قفله والـproducer اصلا نايم فا الـlock استحالة يتفتح تاني, فا الـconsumer هينام هو كمان وكدا بقا عندنا Deadlock.
+
+#+begin_src C
+sem_wait(&mutex); // mutex
+
+sem_wait(&empty);
+////////Critical Section////////
+buffer[fill_ptr] = i;
+fill_ptr = (fill_ptr + 1) % MAX;
+////////////////////////////////
+sem_post(&fill);
+
+sem_post(&mutex); // mutex
+#+end_src
+
+*** Semaphore vs Condition Variables
+
+- Semaphore
+
+  - الـSemaphore في مشاكل زي الـproducer/consumer بيكون اسهل وانظف لان هو مصمم اصلا بـ
+    built-in counting mechanism.
+
+  - ولكن الـSemaphore حساس اكتر للـrace conditions والـdeadlocks وسهل تقع في واحدة منهم لو معندكش خبرة.
+
+
+- Condition Variables
+
+  - الـCondition variables هي الحل الـstandard وبتنفع وبتشتغل بشكل كويس مع معظم المشاكل.
+
+  - والاهم انها بتسمحلنا نعمل شروط معقدة اكتر بشكل سهل:
+
+#+begin_src C
+if (MAX > 3) {
+    pthread_cond_signal(
+#+end_src
+
+** Reader-Writer Locks
+
+*ايه هو الـRWlock؟*:
+- الـReader-Writer Locks هي طريقة لفصل الـthreads اللي بتقرأ فقط (readers) عن الـthreads اللي بتكتب (writers) وده بيضيف تحسين كبير في الاداء, لأننا مش لازم نخلي عمليات القراءة تكون execlusive و نخلي كذا thread يقرأ في نفس الوقت ويبقي عندنا paralleism حقيقي.
+
+*ليه اتوجد النوع من الـlocks؟*:
+- الـMutex بيشتغل بشكل exclusive ومش بيفرق بين الـReader threads و الـWriter threads, i, هو بيسمح لـthread واحد فقط ايا كانت وظيفته انه يدخل الـcritical section في المرة.
+
+- وده كان بيعمل مشاكل في الانظمة اللي طبيعتها استعلامية زي الـDatabase او Cache, في الانظمة دي عمليات القراءة بتكون اكتر بكتير من عمليات الكتابة ممكن توصل النسبة لـ95% قراءة و 5% بس كتابة.
+
+- لو استخدمنا Mutex فا عمليات القراءة الكتير دي هتكون بطيئة جداّ لان الـReaders كلهم بيدخلوا يقرأوا في طابور مش بشكل متوازي وده بيضيع ميزة الـMulit-Core CPUs.
+
+- لكن لو استخدمنا RWlocks هنقدر نخلي كل الـreaders يدخلوا بشكل متوازي مع بعض في نفس اللحظة وهناخد قفزة محترمة في الاداء.
+
+*القاعدة الاساسية للـReader-Writer lock*:
+- مسموع لاي عدد من الـReaders انهم يقرأوا في نفس الوقت بالتوازي (Multiple Readers).
+- مسموح لـWriter واحد فقط انه يكتب في الوقت الواحد وممنوع دخول اي Writer/Reader تاني (Single Writer).
+
+*اّلية العمل*:
+
+- لو Reader دخل فا بيطلب reader licence او رخصة انه يدخل كا reader
+  - لو في writer بالفعل شغال, الطلب ده هيترفض والـthread هيستني.
+  - لو مفيش writer شغال الطلب بتاعه هيتقبل والـreader count هيزيد بـ1.
+
+- لو Writer دخل فا برضو بيطلب رخصة انه يدخل كا writer:
+  - لو مفيش اي Writer تاني او Readers شغالين, طلبه هيتقبل وهيخش الـcritical section بـexclusive lock
+  - لو في Writer تاني شغال او الـReader count > 0, الـthread ده هيستني.
+
+#+begin_src C :results output
+#include <pthread.h>
+#include <stdio.h>
+
+int shared_data = 10;
+pthread_rwlock_t rw = PTHREAD_RWLOCK_INITIALIZER;
+
+void *reader(void *arg)
+{
+    int id = *((int *)arg);
+
+    pthread_rwlock_rdlock(&rw); // ask to enter as a reader (reader count++)
+
+    printf("Reader<%d>: read shared_data = %d\n", id, shared_data);
+
+    pthread_rwlock_unlock(&rw); // leaves the reader licence (reader count--)
+
+    return NULL;
+}
+
+void *writer(void *arg)
+{
+    int id = *((int *)arg);
+
+    pthread_rwlock_wrlock(&rw); // asks to enter as a writer
+
+    shared_data <<= 1;
+
+    printf("Writer<%d>: UPDATED shared_data -> %d\n", id, shared_data);
+
+    pthread_rwlock_unlock(&rw); // leaves the writer licence
+
+    return NULL;
+}
+
+int main(int argc, char *argv[])
+{
+    pthread_t readers[10];
+    pthread_t writers[2];
+    size_t readers_size = sizeof(readers) / sizeof(pthread_t);
+    size_t writers_size = sizeof(writers) / sizeof(pthread_t);
+
+    for (size_t i = 0; i < readers_size; i++) {
+        pthread_create(&readers[i], NULL, reader, (void *)&i);
+    }
+
+    for (size_t i = 0; i < readers_size; i++) {
+        pthread_join(readers[i], NULL);
+    }
+
+    for (size_t i = 0; i < writers_size; i++) {
+        pthread_create(&writers[i], NULL, writer, (void *)&i);
+    }
+
+    for (size_t i = 0; i < writers_size; i++) {
+        pthread_join(writers[i], NULL);
+    }
+
+    return 0;
+}
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Reader<1>: read shared_data = 10
+Reader<2>: read shared_data = 10
+Reader<3>: read shared_data = 10
+Reader<4>: read shared_data = 10
+Reader<5>: read shared_data = 10
+Reader<6>: read shared_data = 10
+Reader<7>: read shared_data = 10
+Reader<8>: read shared_data = 10
+Reader<9>: read shared_data = 10
+Reader<10>: read shared_data = 10
+Writer<1>: UPDATED shared_data -> 20
+Writer<2>: UPDATED shared_data -> 40
+#+end_example
+
+*** Reader-Writer Lock Implementation with Semaphore
+
+- ده API مشابه للـPOSIX API, الـAPI ده بيستخدم الـSemaphore لكن الـPOSIX اكيد هيكون اعقد بكتير ومش شرط يكون بيستخدم الـSemaphore.
+
+#+begin_src C
+typedef struct __rwlock_t {
+    int readers;
+    sem_t reader_lock, writer_lock;
+} rwlock_t;
+
+void rwlock_init(rwlock_t *rw)
+{
+    rw->readers = 0;
+    sem_init(&rw->reader_lock, 0, 1);
+    sem_init(&rw->writer_lock, 0, 1);
+}
+
+void rwlock_acquire_readlock(rwlock_t *rw)
+{
+    sem_wait(&rw->reader_lock);
+    rw->readers++;
+    if (rw->readers == 1)
+        sem_wait(&rw->writer_lock);
+    sem_post(&rw->reader_lock);
+}
+
+void rwlock_release_readlock(rwlock_t *rw)
+{
+    sem_wait(&rw->reader_lock);
+    rw->readers--;
+    if (rw->readers == 0)
+        sem_post(&rw->writer_lock);
+    sem_post(&rw->reader_lock);
+}
+
+void rwlock_acquire_writelock(rwlock_t *rw)
+{
+    sem_wait(&rw->writer_lock);
+}
+
+void rwlock_release_writelock(rwlock_t *rw)
+{
+    sem_post(&rw->writer_lock);
+}
+#+end_src
+
+
+*rwlock_t*
+
+- احنا محتاجين reader counter عشان نفضل ماسكين الـ =writer_lock= طول ما الـcounter اكبر من 0 او يعني طول ما في readers لسا مسجلين دخول.
+- الـ =reader_lock= محتاجينه عشان ننظم تسجيل الدخول لكل الـreaders ونقدر نزود او ننقص الـcounter بشكل سليم.
+
+#+begin_src C
+typedef struct __rwlock_t {
+    int readers;
+    sem_t reader_lock, writer_lock;
+} rwlock_t;
+#+end_src
+
+*rwlock_init*
+
+- الاتنين locks هما عبارة عن mutex locks عادية جدا, (binary semaphore)
+
+#+begin_src C
+void rwlock_init(rwlock_t *rw)
+{
+    rw->readers = 0;
+    sem_init(&rw->reader_lock, 0, 1);
+    sem_init(&rw->writer_lock, 0, 1);
+}
+#+end_src
+
+
+*acquire_readlock*
+
+- كل reader thread بيخش يسجل نفسه ويزود الـcounter بـ1.
+- والـreader threads دي بعدا كدا هتقدر تخش اي critical section وتقرأ منه بشكل parallel حقيقي مش طابور.
+- وطبعا اول reader thread بيخش بيعمل acquire للـ =writer_lock= عشان يمنع اي writer يخش يكتب اي حاجة في الـcritical section طول ما في readers شغالين.
+
+#+begin_src C
+void rwlock_acquire_readlock(rwlock_t *rw)
+{
+    sem_wait(&rw->reader_lock);
+    rw->readers++;
+    if (rw->readers == 1)
+        sem_wait(&rw->writer_lock);
+    sem_post(&rw->reader_lock);
+}
+#+end_src
+
+
+*release_readlock*
+
+- هنا الـreader thread بعد ما بيخلص قرأءة بيسجل خروج عشان نفضي الـcritical section للـwriters اللي هيدخلوا بعد كدا.
+- لحد ما اخر reader thread يعمل release للـ =writer_lock= بعد ما يسجل خروج هو كمان, وكدا متبقاش اي reader تاني, وممكن دلوقتي writer يخش بشكل exclusive.
+
+#+begin_src C
+void rwlock_release_readlock(rwlock_t *rw)
+{
+    sem_wait(&rw->reader_lock);
+    rw->readers--;
+    if (rw->readers == 0)
+        sem_post(&rw->writer_lock);
+    sem_post(&rw->reader_lock);
+}
+#+end_src
+
+
+*acquire/release write_lock*
+
+- الـwriter thread بيعمل acquire او release بشكل مباشر جداّ بدون اي احتياطات لان هو طالما قدر يعمل acquire يبقي مفيش readers شغالين اصلا والامور تمام, لكن لو في readers, هينام لحد ما اخر واحد فيهم يخرج.
+
+#+begin_src C
+void rwlock_acquire_writelock(rwlock_t *rw)
+{
+    sem_wait(&rw->writer_lock);
+}
+
+void rwlock_release_writelock(rwlock_t *rw)
+{
+    sem_post(&rw->writer_lock);
+}
+#+end_src
+
+
+- طبعا لو في 100 reader thread عاملين تسجيل دخول من خلال =rw_acquire_readlock= فا كلهم يقدروا يقرأوا الـvalue بشكل parallel حقيقي وبسرعة جدا.
+
+- وطبعا الـwriter اللي بيقدر يعمل acquire للـ =writer_lock= بيدخل يكتب اللي هو عاوزه بشكل exclusive علي مهله خالص.
+
+#+begin_src C
+void *reader(void *arg)
+{
+    int i;
+    for (i = 0; i < loops; i++) {
+        rwlock_acquire_readlock(&lock);
+        printf("read %d\n", value);
+        rwlock_release_readlock(&lock);
+    }
+    return NULL;
+}
+
+/////////////////////////////////////////////////////
+
+void *writer(void *arg)
+{
+    int i;
+    for (i = 0; i < loops; i++) {
+        rwlock_acquire_writelock(&lock);
+        value++;
+        printf("write %d\n", value);
+        rwlock_release_writelock(&lock);
+    }
+    return NULL;
+}
+#+end_src
+
+*** Reader-Writer Implementation - Prevent Starvation
+
+- عشان نقلل الـstarvation عاوزين نخلي الـwriter threads لما يوصلوا, مفيش reader threads تدخل بعديهم.
+
+- تعديل بسيط بس هيقلل الـstarvation بشكل كويس, هو اننا نضيف lock زيادة يكون يشتغل كا بوابة يعدي منها اي thread سواء كان reader او writer
+
+  - بس بالنسبة للـreader مش هتفرق معاه لانه هيدخل يسجل دخول ويخرج تاني في لمح البصر.
+
+  - لكن لما الـwriter يدخل هيعمل للـ =queue_lock= ده acquire ومش هيعمله release تاني غير بعد ما يخش الـcritical section ويخلص, وبكدا ضمنا ان الـwriter thread لما يوصل مفيش اي reader تاني هيخش بعديه الا لما هو يخلص.
+
+#+begin_src C
+void rwlock_acquire_readlock(rwlock_t *rw)
+{
+    sem_wait(&rw->queue_lock);
+    sem_wait(&rw->reader_lock);
+    rw->readers++;
+    if (rw->readers == 1)
+        sem_wait(&rw->writer_lock);
+    sem_post(&rw->queue_lock);
+    sem_post(&rw->reader_lock);
+}
+
+void rwlock_acquire_writelock(rwlock_t *rw)
+{
+    sem_wait(&rw->queue_lock);
+    sem_wait(&rw->writer_lock);
+    sem_post(&rw->queue_lock);
+}
+#+end_src
+
+*عيب النوع ده من الـLocks*: انه بيعمل starvation.
+
+- لو في عمليات كتابة كتير او Readers كتير فا الـReaders هيحتلوا الـcritical section لفترة طويلة واي Writer عاوز يخش هيستني كتير وده اسمه *Writer Starvation*
+
+- والعكس برضو لو الـWriters عددهم اكبر, فا هيحصل *Reader starvation*.
+
+  الـImplementations الحديثة للـReader-Writer locks زي الـPOSIX implementation او اي لغة برمجة حديثة زي java مثلا, فا بيحاولوا يخلوا النوع ده من الـlocks يبقي عادل قدر الامكان, ولكن برضوا تظل مشكلة الـstarvation موجودة.

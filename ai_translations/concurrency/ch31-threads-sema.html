@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>السيمافورز — ملخص الفصل 31 من OSTEP</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg0:#1d2021;
+    --bg1:#282828;
+    --bg2:#32302f;
+    --border:#3c3836;
+    --fg:#ebdbb2;
+    --fg-dim:#a89984;
+    --muted:#665c54;
+    --yellow:#fabd2f;
+    --orange:#fe8019;
+    --green:#b8bb26;
+    --red:#fb4934;
+    --blue:#83a598;
+    --purple:#d3869b;
+    --aqua:#8ec07c;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg0);
+    color:var(--fg);
+    font-family:'IBM Plex Sans Arabic', Tahoma, sans-serif;
+    line-height:1.85;
+    font-size:16px;
+  }
+  .mono{ font-family:'JetBrains Mono', monospace; }
+  .ltr{ direction:ltr; unicode-bidi:isolate; }
+
+  a{ color:var(--yellow); }
+
+  /* layout */
+  .shell{ display:flex; max-width:1180px; margin:0 auto; align-items:flex-start; }
+  nav.side{
+    position:sticky; top:0; height:100vh; overflow-y:auto;
+    width:230px; flex:0 0 230px; padding:28px 18px;
+    border-left:1px solid var(--border);
+  }
+  main{ flex:1; min-width:0; padding:0 32px 80px; }
+  @media (max-width:900px){
+    .shell{ flex-direction:column; }
+    nav.side{ position:static; width:100%; height:auto; border-left:none; border-bottom:1px solid var(--border); padding:16px 20px; }
+    main{ padding:0 18px 60px; }
+  }
+
+  nav.side .brand{
+    font-family:'JetBrains Mono', monospace; color:var(--muted); font-size:12px;
+    margin-bottom:18px; letter-spacing:.5px;
+  }
+  nav.side ul{ list-style:none; margin:0; padding:0; }
+  nav.side li{ margin:0; }
+  nav.side a{
+    display:block; padding:7px 10px; margin-bottom:2px; border-radius:6px;
+    color:var(--fg-dim); text-decoration:none; font-size:14px;
+    border-right:2px solid transparent;
+  }
+  nav.side a:hover{ color:var(--fg); background:var(--bg1); }
+  nav.side a .num{ color:var(--muted); font-family:'JetBrains Mono',monospace; font-size:12px; margin-left:6px; }
+
+  /* terminal hero */
+  .term{
+    margin:36px 0 44px; border:1px solid var(--border); border-radius:10px;
+    overflow:hidden; background:var(--bg1);
+    box-shadow:0 20px 50px -20px rgba(0,0,0,.6);
+  }
+  .term-bar{
+    display:flex; align-items:center; gap:8px; padding:10px 14px;
+    background:var(--bg2); border-bottom:1px solid var(--border);
+  }
+  .dot{ width:11px; height:11px; border-radius:50%; }
+  .term-bar .title{
+    margin-right:auto; color:var(--muted); font-family:'JetBrains Mono',monospace; font-size:12px;
+  }
+  .term-body{ padding:22px 24px 26px; }
+  .term-body .prompt{ font-family:'JetBrains Mono',monospace; color:var(--green); font-size:14px; direction:ltr; text-align:left; }
+  .term-body .prompt .path{ color:var(--blue); }
+  h1.title{
+    margin:14px 0 6px; font-size:clamp(28px,4vw,40px); color:var(--fg);
+    font-weight:700;
+  }
+  .subtitle{ color:var(--fg-dim); font-size:15.5px; margin-bottom:14px; }
+  .badges{ display:flex; gap:8px; flex-wrap:wrap; }
+  .badge{
+    font-family:'JetBrains Mono',monospace; font-size:11.5px; padding:4px 10px;
+    border-radius:999px; border:1px solid var(--border); color:var(--fg-dim);
+  }
+  .badge.y{ color:var(--yellow); border-color:#5a4b1f; }
+  .badge.o{ color:var(--orange); border-color:#5a3a1f; }
+
+  /* sections */
+  section{ margin:56px 0; }
+  .sec-head{ display:flex; align-items:center; gap:12px; margin-bottom:16px; }
+  .sec-num{
+    font-family:'JetBrains Mono',monospace; font-size:12.5px; color:var(--bg0);
+    background:var(--yellow); padding:3px 9px; border-radius:5px; font-weight:700;
+    flex-shrink:0;
+  }
+  h2{ margin:0; font-size:22px; color:var(--fg); font-weight:700; }
+  h3{ color:var(--aqua); font-size:17px; margin:26px 0 10px; }
+  p{ margin:0 0 14px; color:#ded1b3; }
+  strong{ color:var(--yellow); font-weight:600; }
+  .lead{ color:var(--fg-dim); font-size:15px; }
+
+  code{
+    font-family:'JetBrains Mono',monospace; font-size:.88em; direction:ltr; unicode-bidi:isolate;
+    background:var(--bg2); border:1px solid var(--border); border-radius:4px; padding:1px 6px; color:var(--aqua);
+  }
+
+  pre.code{
+    direction:ltr; text-align:left; font-family:'JetBrains Mono',monospace; font-size:13.5px;
+    background:var(--bg1); border:1px solid var(--border); border-radius:8px;
+    padding:16px 18px; overflow-x:auto; margin:16px 0; line-height:1.65;
+  }
+  pre.code .c{ color:var(--muted); font-style:italic; } /* comment */
+  pre.code .k{ color:var(--purple); } /* keyword */
+  pre.code .f{ color:var(--yellow); } /* function */
+  pre.code .n{ color:var(--blue); }   /* number/type */
+  pre.code .s{ color:var(--green); } /* string */
+
+  .callout{
+    border-right:3px solid var(--orange); background:var(--bg1);
+    padding:14px 18px; border-radius:6px; margin:18px 0; color:#ded1b3; font-size:15px;
+  }
+  .callout .tag{ font-family:'JetBrains Mono',monospace; color:var(--orange); font-size:12px; display:block; margin-bottom:6px; }
+
+  .callout.tip{ border-color:var(--green); }
+  .callout.tip .tag{ color:var(--green); }
+  .callout.warn{ border-color:var(--red); }
+  .callout.warn .tag{ color:var(--red); }
+
+  ul.plain{ margin:0 0 14px; padding-right:22px; color:#ded1b3; }
+  ul.plain li{ margin-bottom:8px; }
+
+  hr.div{ border:none; border-top:1px solid var(--border); margin:44px 0; }
+
+  /* simulator */
+  .sim{
+    border:1px solid var(--border); background:var(--bg1); border-radius:10px;
+    padding:20px 20px 22px; margin:20px 0;
+  }
+  .sim-title{ font-family:'JetBrains Mono',monospace; color:var(--fg-dim); font-size:12.5px; margin-bottom:14px; }
+  .sim-row{ display:flex; gap:14px; flex-wrap:wrap; margin-bottom:16px; }
+  .sim-card{
+    flex:1; min-width:150px; background:var(--bg2); border:1px solid var(--border);
+    border-radius:8px; padding:14px 16px; text-align:center;
+  }
+  .sim-card .who{ font-family:'JetBrains Mono',monospace; font-size:12.5px; color:var(--fg-dim); margin-bottom:8px; }
+  .sim-card .state{ font-family:'JetBrains Mono',monospace; font-size:19px; font-weight:700; }
+  .state-Run{ color:var(--green); }
+  .state-Ready{ color:var(--blue); }
+  .state-Sleep{ color:var(--red); }
+
+  .sim-card.val .state{ font-size:30px; }
+
+  .sim-desc{
+    background:var(--bg0); border:1px solid var(--border); border-radius:8px;
+    padding:14px 16px; min-height:56px; font-size:14.5px; color:#ded1b3; margin-bottom:14px;
+  }
+  .sim-controls{ display:flex; align-items:center; gap:10px; }
+  .sim-btn{
+    font-family:'JetBrains Mono',monospace; font-size:13px; background:var(--bg2);
+    color:var(--fg); border:1px solid var(--border); border-radius:6px;
+    padding:8px 16px; cursor:pointer;
+  }
+  .sim-btn:hover{ border-color:var(--yellow); color:var(--yellow); }
+  .sim-btn:disabled{ opacity:.35; cursor:not-allowed; }
+  .sim-dots{ display:flex; gap:5px; margin-right:auto; }
+  .sim-dots span{ width:6px; height:6px; border-radius:50%; background:var(--border); }
+  .sim-dots span.active{ background:var(--yellow); }
+
+  footer{
+    color:var(--muted); font-size:13px; text-align:center; padding:30px 20px 50px;
+    border-top:1px solid var(--border); margin-top:20px;
+  }
+  footer a{ color:var(--fg-dim); }
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <nav class="side">
+    <div class="brand mono">;; threads-sema.summary</div>
+    <ul>
+      <li><a href="#s1"><span class="num">01</span> السيمافور إيه أصلاً؟</a></li>
+      <li><a href="#s2"><span class="num">02</span> Binary Semaphore كـ Lock</a></li>
+      <li><a href="#s3"><span class="num">03</span> السيمافور للترتيب</a></li>
+      <li><a href="#s4"><span class="num">04</span> Producer/Consumer</a></li>
+      <li><a href="#s5"><span class="num">05</span> Reader-Writer Locks</a></li>
+      <li><a href="#s6"><span class="num">06</span> الفلاسفة الخمسة</a></li>
+      <li><a href="#s7"><span class="num">07</span> Thread Throttling</a></li>
+      <li><a href="#s8"><span class="num">08</span> تبني سيمافور بنفسك</a></li>
+      <li><a href="#s9"><span class="num">09</span> الخلاصة</a></li>
+    </ul>
+  </nav>
+
+  <main>
+    <div class="term">
+      <div class="term-bar">
+        <div class="dot" style="background:var(--red)"></div>
+        <div class="dot" style="background:var(--yellow)"></div>
+        <div class="dot" style="background:var(--green)"></div>
+        <div class="title">zsh — ostep/</div>
+      </div>
+      <div class="term-body">
+        <div class="prompt">$ cat <span class="path">threads-sema.pdf</span> | ziad-translate --dialect=eg --no-literal</div>
+        <h1 class="title">السيمافورز (Semaphores)</h1>
+        <div class="subtitle">ملخص ومبسّط بالعامية المصرية — الفصل 31 من كتاب OSTEP (Operating Systems: Three Easy Pieces)، جزء الـ Concurrency</div>
+        <div class="badges">
+          <span class="badge y">#concurrency</span>
+          <span class="badge o">#locks</span>
+          <span class="badge">#condition-variables</span>
+          <span class="badge">Dijkstra, 1968</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 01 -->
+    <section id="s1">
+      <div class="sec-head"><span class="sec-num">31.1</span><h2>السيمافور إيه أصلاً؟</h2></div>
+      <p>لحد دلوقتي احنا اتعلمنا إن عشان تحل مشاكل concurrency كويس، محتاج حاجتين: <strong>lock</strong> (يحمي الـ critical section) و<strong>condition variable</strong> (يخلي thread ينام لحد ما حاجة معينة تحصل). Dijkstra، من زمان، جاب فكرة اسمها <strong>semaphore</strong> — أداة واحدة بس، تقدر تستخدمها كـ lock وكمان تقدر تستخدمها كـ condition variable. يعني بدل أداتين، أداة واحدة multi-purpose.</p>
+
+      <h3>التعريف</h3>
+      <p>السيمافور هو <strong>object جواه integer</strong>، ومش بتلمس الـ integer ده مباشرة — بتتعامل معاه بس عن طريق فانكشنين:</p>
+      <ul class="plain">
+        <li><code>sem_wait(s)</code> — بتنقص القيمة بواحد. لو القيمة بقت أقل من صفر (negative)، الـ thread بينام (block) لحد ما حد يصحيه.</li>
+        <li><code>sem_post(s)</code> — بتزوّد القيمة بواحد. لو فيه thread نايم مستني، بتصحي واحد منهم.</li>
+      </ul>
+      <p>وقبل ما تستخدم أي حاجة، لازم تعمل <code>sem_init()</code> وتحدد الـ starting value — والقيمة دي هي اللي بتفرق كل حاجة زي ما هنشوف.</p>
+
+      <pre class="code"><span class="c">// إنشاء وتهيئة سيمافور</span>
+<span class="k">#include</span> &lt;semaphore.h&gt;
+
+sem_t s;
+sem_init(&amp;s, <span class="n">0</span>, <span class="n">1</span>);  <span class="c">// القيمة الابتدائية = 1</span></pre>
+
+      <div class="callout">
+        <span class="tag">فكرة تساعدك تتذكر</span>
+        لو القيمة سالبة، القيمة دي (بالسالب) بتساوي بالظبط <strong>عدد الـ threads اللي نايمة مستنية</strong>. يعني لو القيمة -3، معناها 3 threads واقفة مستنية sem_post.
+      </div>
+    </section>
+
+    <!-- 02 -->
+    <section id="s2">
+      <div class="sec-head"><span class="sec-num">31.2</span><h2>Binary Semaphore — استخدامه كـ Lock</h2></div>
+      <p>أبسط استخدام للسيمافور إنك تخليه lock عادي. بس محتاج تسأل نفسك: القيمة الابتدائية تبقى كام؟</p>
+      <pre class="code">sem_t m;
+sem_init(&amp;m, <span class="n">0</span>, X);  <span class="c">// X تساوي كام؟</span>
+
+sem_wait(&amp;m);
+<span class="c">// critical section هنا</span>
+sem_post(&amp;m);</pre>
+      <p>الإجابة: <strong>X = 1</strong>. ليه؟ لأن أول واحد ينده <code>sem_wait</code> هينقصها لـ 0 (مش سالبة) فهيكمل يدخل الـ critical section عادي — القفل "متاح". أي حد تاني بعده هيلاقي القيمة 0، ينقصها لـ -1، فهينام.</p>
+
+      <p>خلينا نتفرج على المثال ده لايف: Thread 0 ماسك القفل، وThread 1 بييجي يحاول ياخده.</p>
+
+      <div class="sim" id="sim1">
+        <div class="sim-title">;; محاكاة — Two Threads Sharing One Lock</div>
+        <div class="sim-row">
+          <div class="sim-card val"><div class="who">قيمة السيمافور</div><div class="state" id="sim1-val">1</div></div>
+          <div class="sim-card"><div class="who">Thread 0</div><div class="state" id="sim1-t0">Ready</div></div>
+          <div class="sim-card"><div class="who">Thread 1</div><div class="state" id="sim1-t1">Ready</div></div>
+        </div>
+        <div class="sim-desc" id="sim1-desc">دوس "الخطوة الجاية" عشان تبدأ الـ trace.</div>
+        <div class="sim-controls">
+          <button class="sim-btn" id="sim1-prev">◀ اللي فات</button>
+          <button class="sim-btn" id="sim1-next">الخطوة الجاية ▶</button>
+          <div class="sim-dots" id="sim1-dots"></div>
+        </div>
+      </div>
+
+      <p>لاحظ إن لما Thread 1 لقى القيمة سالبة، نام (Sleep) وسلّم المعالج. وبما إنه نايم، مش هيصحى إلا لما Thread 0 ينده <code>sem_post</code>. بسبب إن للـ lock حالتين بس (ماسك / مش ماسك)، بنسميه <strong>binary semaphore</strong>.</p>
+    </section>
+
+    <!-- 03 -->
+    <section id="s3">
+      <div class="sec-head"><span class="sec-num">31.3</span><h2>استخدام تاني: السيمافور للترتيب (Ordering)</h2></div>
+      <p>مش كل استخدامات السيمافور بتبقى lock. أحيانًا عايز thread يستنى thread تاني يخلص حاجة معينة — ده بالظبط زي دور الـ condition variable. مثال كلاسيكي: أب (parent thread) عايز يستنى الابن (child thread) يخلص شغله.</p>
+
+      <pre class="code">sem_t s;
+
+<span class="k">void</span> *child(<span class="k">void</span> *arg) {
+    printf(<span class="s">"child\n"</span>);
+    sem_post(&amp;s);       <span class="c">// خلصت، صحّي الأب</span>
+}
+
+<span class="k">int</span> main() {
+    sem_init(&amp;s, <span class="n">0</span>, X);   <span class="c">// X تساوي كام؟</span>
+    printf(<span class="s">"parent: begin\n"</span>);
+    Pthread_create(&amp;c, NULL, child, NULL);
+    sem_wait(&amp;s);        <span class="c">// استنى الابن</span>
+    printf(<span class="s">"parent: end\n"</span>);
+}</pre>
+
+      <p>هنا القيمة الابتدائية <strong>X = 0</strong> — مختلفة عن مثال الـ lock. ليه؟ فيه احتمالين:</p>
+      <ul class="plain">
+        <li><strong>الأب يجري الأول:</strong> بينده <code>sem_wait</code> والقيمة لسه 0، فتنقص لـ -1 وينام. لما الابن يجري وينده <code>sem_post</code>، القيمة بترجع 0 ويتصحي الأب.</li>
+        <li><strong>الابن يجري الأول:</strong> بينده <code>sem_post</code> فالقيمة تزيد لـ 1. لما الأب يجري بعدين وينده <code>sem_wait</code>، هيلاقيها 1، ينقصها لـ 0، ويكمل على طول من غير ما ينام خالص.</li>
+      </ul>
+      <p>في الحالتين، النتيجة واحدة: الأب مش هيكمل قبل ما الابن يخلص.</p>
+
+      <div class="callout tip">
+        <span class="tag">قاعدة عامة لاختيار الـ starting value</span>
+        اسأل نفسك: "كام resource أنا مستعد أدّيه فورًا بعد الـ init؟" في حالة الـ lock، أنت مستعد تدي القفل (يبقى مقفول) فورًا → 1. في حالة الترتيب، مفيش حاجة جاهزة لحد ما الابن يخلص → 0.
+      </div>
+    </section>
+
+    <!-- 04 -->
+    <section id="s4">
+      <div class="sec-head"><span class="sec-num">31.4</span><h2>مشكلة الـ Producer/Consumer (Bounded Buffer)</h2></div>
+      <p>المشكلة دي كلاسيكية: عندك buffer بحجم محدود (<code>MAX</code> خانة)، thread اسمه <strong>producer</strong> بيحط بيانات فيه، وthread اسمه <strong>consumer</strong> بياخد البيانات ويستهلكها. لازم:</p>
+      <ul class="plain">
+        <li>الـ producer ميحطش في buffer مليان.</li>
+        <li>الـ consumer ميقراش من buffer فاضي.</li>
+      </ul>
+
+      <h3>المحاولة الأولى — سيمافورين</h3>
+      <p>هنستخدم سيمافورين: <code>empty</code> (بيتهيأ بـ <code>MAX</code> — يعني كل الخانات فاضية) و<code>full</code> (بيتهيأ بـ 0 — مفيش حاجة مليانة لسه).</p>
+      <pre class="code">sem_t empty, full;
+sem_init(&amp;empty, <span class="n">0</span>, MAX);
+sem_init(&amp;full,  <span class="n">0</span>, <span class="n">0</span>);
+
+<span class="k">void</span> *producer(<span class="k">void</span> *arg) {
+    <span class="k">for</span> (...) {
+        sem_wait(&amp;empty);  <span class="c">// فيه خانة فاضية؟</span>
+        put(i);
+        sem_post(&amp;full);   <span class="c">// خلصت حطيت، بقى فيه حاجة مليانة</span>
+    }
+}
+
+<span class="k">void</span> *consumer(<span class="k">void</span> *arg) {
+    <span class="k">while</span> (...) {
+        sem_wait(&amp;full);   <span class="c">// فيه حاجة مليانة أاخدها؟</span>
+        tmp = get();
+        sem_post(&amp;empty);  <span class="c">// خلصت أخدت، بقى فيه خانة فاضية</span>
+    }
+}</pre>
+      <p>لو <code>MAX = 1</code> وthread واحد من كل نوع، الحل ده شغال تمام: الـ producer بينتظر خانة فاضية، والـ consumer بينتظر حاجة مليانة، وبيتبادلوا الدور بأمان.</p>
+
+      <h3>المشكلة الحقيقية — Race Condition</h3>
+      <p>لو <code>MAX</code> أكبر من 1، وفيه أكتر من producer شغالين مع بعض (وأكتر من consumer)، هتظهر مشكلة: تخيل اتنين producers بينداخلوا في نفس اللحظة على <code>put()</code>. لو Producer A بدأ يكتب في الخانة رقم 0، وقبل ما يزوّد الـ index اتقطع، وProducer B جه وكتب هو كمان في نفس الخانة رقم 0 — البيانات اللي كتبها A ضاعت! المشكلة إن <code>put()</code> و<code>get()</code> نفسهم بيبقوا critical section، لكن السيمافورين اللي فوق (<code>empty</code>/<code>full</code>) مش بيحموهم من بعض.</p>
+
+      <h3>محاولة إصلاح — لكن غلط: Deadlock</h3>
+      <p>الحل البديهي: ضيف <code>mutex</code> يلف حوالين كل حاجة، من أول <code>sem_wait(empty)</code> لحد آخر <code>sem_post(full)</code>. المشكلة إن ده بيسبب <strong>deadlock</strong>. تخيل الآتي: الـ consumer بيمسك الـ mutex الأول، وبعدين بينده <code>sem_wait(full)</code> — لكن مفيش حاجة مليانة لسه، فهينام... وهو <strong>لسه ماسك الـ mutex</strong>! دلوقتي الـ producer عايز يحط بيانات ويصحي الـ consumer، بس عشان يعمل كده لازم الأول ياخد نفس الـ mutex — واللي مقفول. الاتنين واقفين مستنيين بعض للأبد.</p>
+
+      <div class="callout warn">
+        <span class="tag">قاعدة مهمة</span>
+        متحطّش mutex حوالين كود ممكن ينده <code>sem_wait</code> على سيمافور تاني ممكن يخليه ينام — وهو لسه ماسك القفل. القفل ده هيفضل ماسكه وهو نايم، وكل حد محتاج القفل عشان يصحّيه هيتقفل عليه.
+      </div>
+
+      <h3>الحل الصح — ضيّق نطاق الـ mutex</h3>
+      <p>الحل: خلي الـ mutex يلف بس حوالين الجزء اللي فعلاً بيلمس الـ buffer (الـ <code>put</code>/<code>get</code>)، مش حوالين استدعاءات <code>empty</code>/<code>full</code>.</p>
+      <pre class="code"><span class="k">void</span> *producer(<span class="k">void</span> *arg) {
+    <span class="k">for</span> (...) {
+        sem_wait(&amp;empty);
+        sem_wait(&amp;mutex);   <span class="c">// قفل ضيق</span>
+        put(i);
+        sem_post(&amp;mutex);   <span class="c">// فك القفل</span>
+        sem_post(&amp;full);
+    }
+}
+
+<span class="k">void</span> *consumer(<span class="k">void</span> *arg) {
+    <span class="k">while</span> (...) {
+        sem_wait(&amp;full);
+        sem_wait(&amp;mutex);
+        tmp = get();
+        sem_post(&amp;mutex);
+        sem_post(&amp;empty);
+    }
+}</pre>
+      <p>دلوقتي مفيش thread ممكن ينام وهو ماسك الـ mutex، فالـ deadlock اتحل. الـ pattern ده (bounded buffer) شائع جدًا في برمجة الـ threads — يستاهل تفهمه كويس.</p>
+    </section>
+
+    <!-- 05 -->
+    <section id="s5">
+      <div class="sec-head"><span class="sec-num">31.5</span><h2>Reader-Writer Locks</h2></div>
+      <p>أحيانًا مش كل الوصول لـ data structure لازم يبقى exclusive. مثلاً list فيها عمليات <code>insert</code> (بتغيّر البيانات) وعمليات <code>lookup</code> (بس بتقرأ). طول ما مفيش insert شغال، ممكن كذا lookup يشتغلوا مع بعض من غير مشاكل. عشان كده فيه lock خاص اسمه <strong>reader-writer lock</strong>:</p>
+      <ul class="plain">
+        <li>أي عدد من الـ <strong>readers</strong> يقدروا يدخلوا مع بعض في نفس الوقت.</li>
+        <li>الـ <strong>writer</strong> لازم يبقى لوحده تمامًا — مفيش reader ولا writer تاني وقتها.</li>
+      </ul>
+      <p>الفكرة في التنفيذ: فيه عداد <code>readers</code> محمي بـ lock عادي، وفيه سيمافور اسمه <code>writelock</code>. <strong>أول reader</strong> بيدخل هو اللي بيمسك الـ <code>writelock</code> (عشان يمنع أي writer يدخل)، و<strong>آخر reader</strong> بيخرج هو اللي بيسيبه. الـ writer نفسه بس بيمسك الـ <code>writelock</code> مباشرة زي أي lock عادي.</p>
+      <pre class="code"><span class="k">void</span> rwlock_acquire_readlock(rwlock_t *rw) {
+    sem_wait(&amp;rw-&gt;lock);
+    rw-&gt;readers++;
+    <span class="k">if</span> (rw-&gt;readers == <span class="n">1</span>)          <span class="c">// أول reader</span>
+        sem_wait(&amp;rw-&gt;writelock);  <span class="c">// يقفل على الـ writers</span>
+    sem_post(&amp;rw-&gt;lock);
+}
+
+<span class="k">void</span> rwlock_release_readlock(rwlock_t *rw) {
+    sem_wait(&amp;rw-&gt;lock);
+    rw-&gt;readers--;
+    <span class="k">if</span> (rw-&gt;readers == <span class="n">0</span>)          <span class="c">// آخر reader</span>
+        sem_post(&amp;rw-&gt;writelock); <span class="c">// يفتح للـ writers</span>
+    sem_post(&amp;rw-&gt;lock);
+}</pre>
+      <div class="callout warn">
+        <span class="tag">عيب مهم</span>
+        الحل ده سهل الـ <strong>starvation</strong> للـ writers — لو فيه readers مستمرين يدخلوا واحد ورا التاني، الـ writer ممكن يفضل مستني للأبد. وفوق كده، reader-writer locks عمومًا بتضيف overhead، فمش دايمًا أسرع من lock عادي بسيط. القاعدة: ابدأ بالحل البسيط، ومتعقدش غير لو محتاج فعلاً.
+      </div>
+    </section>
+
+    <!-- 06 -->
+    <section id="s6">
+      <div class="sec-head"><span class="sec-num">31.6</span><h2>مشكلة الفلاسفة الخمسة (Dining Philosophers)</h2></div>
+      <p>مشكلة شهيرة من Dijkstra — مش عملية جدًا لكنها بتتسأل كتير في الـ interviews. الإعداد: 5 فلاسفة حوالين طاولة دائرية، وبينهم 5 شوك (شوكة بين كل اتنين). كل فيلسوف عشان ياكل محتاج الشوكة اللي شماله والشوكة اللي يمينه سوا.</p>
+
+      <h3>الحل الغلط</h3>
+      <p>كل فيلسوف يمسك شوكة شماله الأول، وبعدين شوكة يمينه:</p>
+      <pre class="code"><span class="k">void</span> get_forks(<span class="k">int</span> p) {
+    sem_wait(&amp;forks[left(p)]);
+    sem_wait(&amp;forks[right(p)]);
+}</pre>
+      <p>لو الخمسة فلاسفة مسكوا الشوكة اللي شمالهم <strong>في نفس اللحظة</strong>، كل واحد فيهم هيبقى ماسك شوكة واحدة بس ومستني الشوكة التانية اللي واحد جنبه ماسكها — <strong>deadlock</strong> دائري بين الخمسة.</p>
+
+      <h3>الحل — كسر الحلقة (Break the Cycle)</h3>
+      <p>الحل البسيط: خلي فيلسوف واحد بس (آخر واحد، رقم 4 مثلاً) ياخد الشوك بترتيب معكوس — يمين الأول، بعدين شمال:</p>
+      <pre class="code"><span class="k">void</span> get_forks(<span class="k">int</span> p) {
+    <span class="k">if</span> (p == <span class="n">4</span>) {                    <span class="c">// الاستثناء</span>
+        sem_wait(&amp;forks[right(p)]);
+        sem_wait(&amp;forks[left(p)]);
+    } <span class="k">else</span> {
+        sem_wait(&amp;forks[left(p)]);
+        sem_wait(&amp;forks[right(p)]);
+    }
+}</pre>
+      <p>بكده مفيش سيناريو ممكن كل الفلاسفة الخمسة يمسكوا شوكة واحدة ويستنوا بعض في نفس الوقت — الحلقة اتكسرت، والـ deadlock مبقاش ممكن يحصل.</p>
+    </section>
+
+    <!-- 07 -->
+    <section id="s7">
+      <div class="sec-head"><span class="sec-num">31.7</span><h2>Thread Throttling</h2></div>
+      <p>استخدام تاني عملي جدًا: لو عندك مئات الـ threads شغالين مع بعض، وفيه جزء من الكود بياخد <strong>memory كتير</strong> — لو كل الـ threads دخلوا الجزء ده مع بعض في نفس اللحظة، الجهاز ممكن يعدي الـ physical memory المتاحة ويبدأ <strong>thrashing</strong> (swap مستمر) والأداء يقف تمامًا.</p>
+      <p>الحل بسيط: سيمافور بتهيّئه بأقصى عدد threads مسموح لهم يدخلوا الجزء الخطير ده في نفس الوقت، وتحط <code>sem_wait</code>/<code>sem_post</code> حواليه. بكده انت بتتحكم (throttle) في عدد الـ threads المتزامنة اللي بتاخد الموارد الحساسة دي — ده بيتسمى admission control.</p>
+    </section>
+
+    <!-- 08 -->
+    <section id="s8">
+      <div class="sec-head"><span class="sec-num">31.8</span><h2>وإزاي تبني سيمافور بنفسك؟</h2></div>
+      <p>ده حلو: تقدر تبني السيمافور نفسه من الأدوات الأساسية اللي اتعلمتها قبل كده — <strong>lock واحد</strong> و<strong>condition variable واحد</strong> و<strong>integer</strong> بيحمل القيمة. الكتاب بيسميها بمزاح <em>Zemaphore</em>.</p>
+      <pre class="code"><span class="k">typedef</span> <span class="k">struct</span> {
+    <span class="k">int</span> value;
+    pthread_cond_t  cond;
+    pthread_mutex_t lock;
+} Zem_t;
+
+<span class="k">void</span> Zem_wait(Zem_t *s) {
+    Mutex_lock(&amp;s-&gt;lock);
+    <span class="k">while</span> (s-&gt;value &lt;= <span class="n">0</span>)
+        Cond_wait(&amp;s-&gt;cond, &amp;s-&gt;lock);  <span class="c">// نام واستنى</span>
+    s-&gt;value--;
+    Mutex_unlock(&amp;s-&gt;lock);
+}
+
+<span class="k">void</span> Zem_post(Zem_t *s) {
+    Mutex_lock(&amp;s-&gt;lock);
+    s-&gt;value++;
+    Cond_signal(&amp;s-&gt;cond);            <span class="c">// صحّي واحد نايم</span>
+    Mutex_unlock(&amp;s-&gt;lock);
+}</pre>
+      <p>فرق بسيط عن سيمافور Dijkstra الأصلي: هنا القيمة <strong>مبتنزلش تحت الصفر خالص</strong> (يعني مش بنحافظ على الـ invariant بتاع "القيمة السالبة = عدد المنتظرين"). ده أسهل في التنفيذ، وده فعليًا اللي بيحصل في Linux الحالي.</p>
+      <div class="callout">
+        <span class="tag">حاجة تستاهل تفكر فيها</span>
+        عكس كده — بناء <strong>condition variable من سيمافور</strong> — أصعب بكتير مما يبدو. حتى مبرمجين محترفين جربوا كده في بيئة Windows ووقعوا في bugs كتير. جرب بنفسك وفكر ليه الاتجاه ده أصعب.
+      </div>
+    </section>
+
+    <!-- 09 -->
+    <section id="s9">
+      <div class="sec-head"><span class="sec-num">31.9</span><h2>الخلاصة</h2></div>
+      <p>السيمافور أداة قوية ومرنة — لدرجة إن بعض المبرمجين بيستخدموها بس، ومش بيحتاجوا locks أو condition variables منفصلين خالص. اللي شفناه هنا كان بس شوية أمثلة كلاسيكية (lock، ordering، bounded buffer، reader-writer، dining philosophers، throttling) — لكن الفكرة الأساسية واحدة في كل مكان: <code>sem_wait</code> بينقص ويستنى لو القيمة سالبة، و<code>sem_post</code> بيزود ويصحّي حد لو محتاج.</p>
+      <p class="lead">لو عايز تتمرن أكتر، فيه كتاب مجاني اسمه "The Little Book of Semaphores" لـ Allen Downey فيه تمارين كتير على نفس الفكرة.</p>
+    </section>
+
+    <footer>
+      مبني على الفصل 31 (Semaphores) من كتاب <span class="mono">Operating Systems: Three Easy Pieces</span> — Arpaci-Dusseau · ostep.org
+    </footer>
+  </main>
+</div>
+
+<script>
+  // --- Simulator: Two threads sharing a binary semaphore lock ---
+  const steps = [
+    {val:1,  t0:'Ready', t1:'Ready', desc:'الحالة الأول: القيمة = 1 (القفل متاح)، ولسه محدش دخل الـ critical section.'},
+    {val:1,  t0:'Run',   t1:'Ready', desc:'Thread 0 بينده sem_wait()... هتنقص القيمة دلوقتي.'},
+    {val:0,  t0:'Run',   t1:'Ready', desc:'القيمة بقت 0 (مش سالبة)، فـ sem_wait() ترجع فورًا و Thread 0 يدخل الـ critical section.'},
+    {val:0,  t0:'Run',   t1:'Ready', desc:'Thread 0 دلوقتي جوه الـ critical section، شغال عادي.'},
+    {val:0,  t0:'Ready', t1:'Run',   desc:'حصل context switch لـ Thread 1 — و Thread 0 لسه ماسك القفل.'},
+    {val:0,  t0:'Ready', t1:'Run',   desc:'Thread 1 بينده sem_wait() هو كمان، عايز يدخل نفس الـ critical section.'},
+    {val:-1, t0:'Ready', t1:'Sleep', desc:'القيمة نزلت لـ -1 (سالبة) — يبقى Thread 1 لازم ينام ويسلّم المعالج.'},
+    {val:-1, t0:'Run',   t1:'Sleep', desc:'رجعنا لـ Thread 0 يكمل شغله جوه الـ critical section.'},
+    {val:-1, t0:'Run',   t1:'Sleep', desc:'Thread 0 خلص من الـ critical section وبينده sem_post().'},
+    {val:0,  t0:'Run',   t1:'Ready', desc:'القيمة زادت لـ 0. وبما إن فيه thread نايم (Thread 1)، sem_post() بتصحّيه.'},
+    {val:0,  t0:'Ready', t1:'Run',   desc:'Thread 1 اتصحى، ودلوقتي هو اللي جوه الـ critical section.'},
+    {val:1,  t0:'Ready', t1:'Run',   desc:'Thread 1 خلص وبينده sem_post() — القيمة رجعت 1، ومفيش حد نايم فمحدش يتصحي.'},
+  ];
+  let i = 0;
+  const $ = id => document.getElementById(id);
+  const dotsWrap = $('sim1-dots');
+  steps.forEach((_, idx) => {
+    const d = document.createElement('span');
+    if (idx === 0) d.classList.add('active');
+    dotsWrap.appendChild(d);
+  });
+  function render(){
+    const s = steps[i];
+    $('sim1-val').textContent = s.val;
+    $('sim1-val').style.color = s.val < 0 ? 'var(--red)' : (s.val === 0 ? 'var(--orange)' : 'var(--green)');
+    const t0 = $('sim1-t0'); t0.textContent = s.t0; t0.className = 'state state-' + s.t0;
+    const t1 = $('sim1-t1'); t1.textContent = s.t1; t1.className = 'state state-' + s.t1;
+    $('sim1-desc').textContent = s.desc;
+    $('sim1-prev').disabled = i === 0;
+    $('sim1-next').disabled = i === steps.length - 1;
+    [...dotsWrap.children].forEach((d, idx) => d.classList.toggle('active', idx === i));
+  }
+  $('sim1-next').addEventListener('click', () => { if (i < steps.length - 1) { i++; render(); } });
+  $('sim1-prev').addEventListener('click', () => { if (i > 0) { i--; render(); } });
+  render();
+</script>
+
+</body>
+</html>
