@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Common Concurrency Problems — شرح بالعربي</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg0: #1d2021;
+    --bg1: #282828;
+    --bg2: #32302f;
+    --bg3: #3c3836;
+    --fg0: #ebdbb2;
+    --fg1: #d5c4a1;
+    --fg-dim: #a89984;
+    --gray: #928374;
+    --red: #fb4934;
+    --green: #b8bb26;
+    --yellow: #fabd2f;
+    --blue: #83a598;
+    --purple: #d3869b;
+    --aqua: #8ec07c;
+    --orange: #fe8019;
+    --border: #504945;
+  }
+
+  * { box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    margin: 0;
+    background: var(--bg0);
+    color: var(--fg0);
+    font-family: 'IBM Plex Sans Arabic', 'Segoe UI', sans-serif;
+    line-height: 1.9;
+    font-size: 17px;
+  }
+
+  .layout {
+    display: flex;
+    max-width: 1300px;
+    margin: 0 auto;
+  }
+
+  nav.toc {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    width: 260px;
+    flex-shrink: 0;
+    overflow-y: auto;
+    padding: 28px 20px;
+    border-left: 1px solid var(--border);
+    background: var(--bg1);
+  }
+
+  nav.toc h3 {
+    color: var(--orange);
+    font-size: 13px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin: 0 0 14px;
+    font-weight: 600;
+  }
+
+  nav.toc a {
+    display: block;
+    color: var(--fg-dim);
+    text-decoration: none;
+    font-size: 14.5px;
+    padding: 6px 0;
+    border-right: 2px solid transparent;
+    padding-right: 10px;
+    margin-right: -12px;
+    transition: color .15s, border-color .15s;
+  }
+  nav.toc a:hover { color: var(--yellow); }
+  nav.toc a.sub { padding-right: 22px; font-size: 13.5px; }
+
+  main {
+    flex: 1;
+    padding: 46px 56px 100px;
+    min-width: 0;
+  }
+
+  header.hero {
+    margin-bottom: 46px;
+    padding-bottom: 28px;
+    border-bottom: 1px solid var(--border);
+  }
+  header.hero .eyebrow {
+    color: var(--aqua);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    letter-spacing: .5px;
+  }
+  header.hero h1 {
+    font-size: 34px;
+    margin: 10px 0 8px;
+    color: var(--fg0);
+  }
+  header.hero p.subtitle {
+    color: var(--fg-dim);
+    font-size: 16.5px;
+    max-width: 720px;
+  }
+
+  section { margin-bottom: 58px; }
+
+  h2 {
+    color: var(--yellow);
+    font-size: 25px;
+    border-right: 4px solid var(--orange);
+    padding-right: 14px;
+    margin: 0 0 22px;
+  }
+
+  h3 {
+    color: var(--aqua);
+    font-size: 20px;
+    margin: 34px 0 14px;
+  }
+
+  h4 {
+    color: var(--purple);
+    font-size: 17px;
+    margin: 24px 0 10px;
+  }
+
+  p { margin: 0 0 16px; color: var(--fg1); }
+  strong { color: var(--fg0); }
+
+  ul, ol { margin: 0 0 18px; padding-right: 26px; color: var(--fg1); }
+  li { margin-bottom: 8px; }
+
+  code.inline {
+    font-family: 'JetBrains Mono', monospace;
+    background: var(--bg2);
+    color: var(--aqua);
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-size: 14.5px;
+    direction: ltr;
+    display: inline-block;
+  }
+
+  pre {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 18px 20px;
+    overflow-x: auto;
+    direction: ltr;
+    text-align: left;
+    margin: 0 0 20px;
+  }
+  pre code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    color: var(--fg0);
+    line-height: 1.7;
+    white-space: pre;
+  }
+  .tok-kw { color: var(--red); }
+  .tok-type { color: var(--yellow); }
+  .tok-fn { color: var(--green); }
+  .tok-cm { color: var(--gray); font-style: italic; }
+  .tok-str { color: var(--aqua); }
+  .code-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12.5px;
+    color: var(--gray);
+    margin-bottom: -8px;
+    direction: ltr;
+    text-align: left;
+  }
+
+  .box {
+    border-radius: 8px;
+    padding: 18px 22px;
+    margin: 22px 0;
+    border: 1px solid var(--border);
+    background: var(--bg1);
+  }
+  .box.tip { border-right: 4px solid var(--green); }
+  .box.tip .box-title { color: var(--green); }
+  .box.crux { border-right: 4px solid var(--red); }
+  .box.crux .box-title { color: var(--red); }
+  .box.note { border-right: 4px solid var(--blue); }
+  .box.note .box-title { color: var(--blue); }
+  .box-title {
+    font-weight: 700;
+    font-size: 13.5px;
+    letter-spacing: .5px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+    background: var(--bg1);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  th, td {
+    padding: 11px 14px;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+    font-size: 15px;
+  }
+  th {
+    background: var(--bg3);
+    color: var(--yellow);
+    font-weight: 600;
+  }
+  td { color: var(--fg1); }
+  tr:last-child td { border-bottom: none; }
+  td.hl { color: var(--orange); font-weight: 600; }
+
+  .conditions-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin: 22px 0;
+  }
+  .cond-card {
+    background: var(--bg1);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 18px;
+  }
+  .cond-card .num {
+    display: inline-block;
+    width: 26px; height: 26px;
+    background: var(--orange);
+    color: var(--bg0);
+    border-radius: 50%;
+    text-align: center;
+    line-height: 26px;
+    font-weight: 700;
+    font-size: 14px;
+    margin-left: 8px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .cond-card .title { color: var(--fg0); font-weight: 700; font-size: 16px; }
+  .cond-card p { margin: 8px 0 0; font-size: 14.5px; }
+
+  .graph-wrap { display: flex; justify-content: center; margin: 26px 0; }
+
+  .schedule {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13.5px;
+    direction: ltr;
+    text-align: left;
+  }
+  .schedule table th, .schedule table td { text-align: center; }
+  .cpu-row { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
+  .cpu-label { width: 60px; color: var(--gray); font-size: 13px; }
+  .cpu-block {
+    padding: 8px 20px;
+    border-radius: 6px;
+    font-weight: 600;
+  }
+  .blk-t1 { background: rgba(251,73,52,.18); color: var(--red); border: 1px solid var(--red); }
+  .blk-t2 { background: rgba(250,189,47,.18); color: var(--yellow); border: 1px solid var(--yellow); }
+  .blk-t3 { background: rgba(184,187,38,.18); color: var(--green); border: 1px solid var(--green); }
+  .blk-t4 { background: rgba(131,165,152,.18); color: var(--blue); border: 1px solid var(--blue); }
+
+  .divider {
+    text-align: center;
+    color: var(--border);
+    margin: 46px 0;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 8px;
+  }
+
+  .refs {
+    font-size: 14px;
+    color: var(--fg-dim);
+  }
+  .refs li { margin-bottom: 10px; }
+  .refs .tag {
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--purple);
+    margin-left: 6px;
+  }
+
+  footer {
+    text-align: center;
+    color: var(--gray);
+    font-size: 13px;
+    padding-top: 30px;
+    border-top: 1px solid var(--border);
+  }
+
+  @media (max-width: 900px) {
+    nav.toc { display: none; }
+    main { padding: 30px 22px; }
+    .conditions-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+
+  <nav class="toc">
+    <h3>المحتويات</h3>
+    <a href="#intro">مقدمة</a>
+    <a href="#nondeadlock">١. Non-Deadlock Bugs</a>
+    <a class="sub" href="#atomicity">Atomicity Violation</a>
+    <a class="sub" href="#ordering">Order Violation</a>
+    <a href="#deadlock">٢. Deadlock Bugs</a>
+    <a class="sub" href="#why-deadlock">ليه بتحصل؟</a>
+    <a class="sub" href="#conditions">الشروط الأربعة</a>
+    <a href="#prevention">٣. Prevention</a>
+    <a class="sub" href="#p-circular">كسر Circular Wait</a>
+    <a class="sub" href="#p-hold">كسر Hold-and-Wait</a>
+    <a class="sub" href="#p-preempt">كسر No-Preemption</a>
+    <a class="sub" href="#p-mutex">إلغاء Mutual Exclusion</a>
+    <a href="#avoidance">٤. Avoidance</a>
+    <a href="#detect">٥. Detect & Recover</a>
+    <a href="#summary">الخلاصة</a>
+    <a href="#refs">المراجع</a>
+  </nav>
+
+  <main>
+    <header class="hero" id="intro">
+      <div class="eyebrow">OSTEP · Chapter 32</div>
+      <h1>Common Concurrency Problems</h1>
+      <p class="subtitle">
+        شرح مفصّل بالعربي المصري لأشهر أنواع الـ bugs اللي بتظهر في البرامج اللي فيها أكتر من thread شغالين مع بعض:
+        من الـ non-deadlock bugs البسيطة، لحد الـ deadlock بكل أسبابه وطرق التعامل معاه.
+      </p>
+    </header>
+
+    <p>
+      الباحثين مهتمين بموضوع الـ concurrency bugs من زمان، وأكتر حاجة اتدرست بعمق هي الـ <strong>deadlock</strong>.
+      بس في السنين الأخيرة، بقى فيه اهتمام أكبر بدراسة أنواع تانية من البgs اللي مالهاش علاقة بالـ deadlock خالص.
+      في الشابتر ده هناخد جولة على أشهر أنواع المشاكل دي، عشان تبقى عارف تدور على إيه لما تكتب كود concurrent.
+    </p>
+
+    <div class="box crux">
+      <div class="box-title">السؤال الأساسي</div>
+      <p style="margin:0">إزاي نتعامل مع الـ concurrency bugs الشائعة؟ الـ bugs دي بتيجي في أنماط متكررة، وأول خطوة عشان تكتب كود صحيح ومتين إنك تعرف الأنماط دي وتحسّها وهي جاية.</p>
+    </div>
+
+    <h3 style="margin-top:34px">دراسة Lu et al. (٢٠٠٨)</h3>
+    <p>
+      فيه دراسة مشهورة قام بيها فريق من الباحثين (Shan Lu وزمايلها) حللوا فيها الـ bugs اللي اتلاقت واتصلحت في 4 برامج مفتوحة المصدر ومشهورة جدًا:
+      <strong>MySQL</strong> (database server)، <strong>Apache</strong> (web server)، <strong>Mozilla</strong> (المتصفح)، و<strong>OpenOffice</strong> (بديل مايكروسوفت أوفيس).
+      الهدف كان يفهموا فعليًا إيه أكتر أنواع الـ bugs اللي بتظهر في كود حقيقي وناضج، مش نظري بس.
+    </p>
+
+    <table>
+      <thead>
+        <tr><th>البرنامج</th><th>نوعه</th><th>Non-Deadlock</th><th>Deadlock</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>MySQL</td><td>Database Server</td><td>14</td><td>9</td></tr>
+        <tr><td>Apache</td><td>Web Server</td><td>13</td><td>4</td></tr>
+        <tr><td>Mozilla</td><td>Web Browser</td><td>41</td><td>16</td></tr>
+        <tr><td>OpenOffice</td><td>Office Suite</td><td>6</td><td>2</td></tr>
+        <tr><td class="hl">الإجمالي</td><td>—</td><td class="hl">74</td><td class="hl">31</td></tr>
+      </tbody>
+    </table>
+
+    <p>
+      لاحظ إن من إجمالي ١٠٥ bug، أغلبهم (٧٤) كانوا <strong>مش deadlock</strong>، والباقي (٣١) بس كانوا deadlock.
+      يعني لو ركزنا بس على الـ deadlock هنبقى ناسيين أغلب المشكلة. عشان كده هنبدأ بالنوع الأشيع الأول.
+    </p>
+
+    <div class="divider">• • •</div>
+
+    <!-- ================= NON-DEADLOCK ================= -->
+    <section id="nondeadlock">
+      <h2>١. Non-Deadlock Bugs</h2>
+      <p>
+        النوع ده هو الأكتر شيوعًا حسب الدراسة. Lu وزمايلها لقوا إن أغلب الـ non-deadlock bugs بترجع لنوعين رئيسيين:
+        <strong>Atomicity Violation</strong> و <strong>Order Violation</strong>. الحلو في النوع ده إنه غالبًا أسهل في الإصلاح من الـ deadlock.
+      </p>
+
+      <h3 id="atomicity">Atomicity Violation</h3>
+      <p>
+        التعريف الرسمي: بيحصل لما يكون فيه سلسلة من الوصول للذاكرة (memory accesses) المفروض تتنفذ كوحدة واحدة (atomic)،
+        لكن فعليًا مفيش حاجة بتضمن إنها هتتنفذ مع بعض من غير مقاطعة.
+      </p>
+      <p>
+        فيه مثال حقيقي حصل في MySQL: متغير مشترك اسمه <code class="inline">proc_info</code> جوه struct اسمها <code class="inline">thd</code>.
+        الـ thread الأول بيتأكد إن القيمة مش NULL، وبعدين يطبعها. المشكلة إن الـ thread التاني ممكن يحط القيمة NULL <em>بالظبط في اللحظة اللي بين الفحص والطباعة</em>.
+        النتيجة: الـ thread الأول لما يوصل للطباعة، القيمة بقت NULL، فيحصل crash (null pointer dereference).
+      </p>
+
+      <div class="code-label">// Thread 1 بيفحص القيمة ويطبعها، Thread 2 بيمسحها في أي لحظة — من غير أي تنسيق بينهم</div>
+      <pre><code><span class="tok-cm">// Thread 1</span>
+<span class="tok-kw">if</span> (thd-&gt;proc_info != <span class="tok-kw">NULL</span>) {
+    print_status(thd-&gt;proc_info);   <span class="tok-cm">// ممكن proc_info تبقى NULL هنا بالظبط</span>
+}
+
+<span class="tok-cm">// Thread 2 (بيشتغل في نفس الوقت)</span>
+thd-&gt;proc_info = <span class="tok-kw">NULL</span>;
+</code></pre>
+
+      <p>
+        <strong>الحل</strong> غالبًا بسيط: تحط lock حوالين أي استخدام للمتغير المشترك، عشان الفحص والاستخدام يحصلوا كوحدة واحدة متكاملة
+        من غير ما thread تاني يقدر "يقفز" في النص.
+      </p>
+
+      <div class="code-label">// نفس الكود بعد الإصلاح — الفحص والاستخدام بقوا محميين بنفس الـ lock</div>
+      <pre><code>pthread_mutex_t info_lock = PTHREAD_MUTEX_INITIALIZER;
+
+<span class="tok-cm">// Thread 1</span>
+pthread_mutex_lock(&amp;info_lock);
+<span class="tok-kw">if</span> (thd-&gt;proc_info != <span class="tok-kw">NULL</span>) {
+    print_status(thd-&gt;proc_info);
+}
+pthread_mutex_unlock(&amp;info_lock);
+
+<span class="tok-cm">// Thread 2</span>
+pthread_mutex_lock(&amp;info_lock);
+thd-&gt;proc_info = <span class="tok-kw">NULL</span>;
+pthread_mutex_unlock(&amp;info_lock);
+</code></pre>
+      <p>مهم: أي كود تاني بيلمس <code class="inline">proc_info</code> لازم يستخدم نفس الـ lock برضه، وإلا الحماية مش هتفيد حاجة.</p>
+
+      <h3 id="ordering">Order Violation</h3>
+      <p>
+        التعريف الرسمي: بيحصل لما يكون فيه ترتيب متوقع بين عمليتين (المفروض A تحصل قبل B)،
+        لكن الترتيب ده مش متضمن فعليًا وقت التشغيل — يعني B ممكن تحصل قبل A.
+      </p>
+      <p>
+        مثال شائع: thread رئيسي بيعمل <em>create</em> لـ thread تاني، والـ thread الجديد بيفترض إن متغير معين
+        (زي pointer بتاع الـ thread نفسه) اتهيأ خلاص. المشكلة: لو الـ thread الجديد بدأ ينفذ فورًا،
+        ممكن يوصل للمتغير ده <em>قبل</em> ما الـ thread الرئيسي يخلص تهيئته — فيحصل وصول لقيمة NULL أو غير مهيأة.
+      </p>
+
+      <div class="code-label">// Thread 2 بيفترض إن worker اتعمله init، بس مفيش أي ضمان لذلك</div>
+      <pre><code><span class="tok-cm">// Thread 1</span>
+<span class="tok-type">void</span> <span class="tok-fn">start_up</span>() {
+    worker = create_thread(worker_main, ...);
+}
+
+<span class="tok-cm">// Thread 2</span>
+<span class="tok-type">void</span> <span class="tok-fn">worker_main</span>() {
+    status = worker-&gt;state;   <span class="tok-cm">// ممكن worker لسه NULL هنا</span>
+}
+</code></pre>
+
+      <p>
+        <strong>الحل</strong> القياسي هو استخدام <strong>condition variable</strong> عشان تفرض الترتيب:
+        الـ thread التاني ينتظر (wait) على إشارة (signal) من الأول، ومايكملش غير لما يتأكد إن التهيئة خلصت فعلًا.
+      </p>
+
+      <div class="code-label">// نفس الكود بعد إضافة condition variable لفرض الترتيب</div>
+      <pre><code>pthread_mutex_t   lk   = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t    cv   = PTHREAD_COND_INITIALIZER;
+<span class="tok-type">int</span>               ready = <span class="tok-str">0</span>;
+
+<span class="tok-cm">// Thread 1</span>
+<span class="tok-type">void</span> <span class="tok-fn">start_up</span>() {
+    worker = create_thread(worker_main, ...);
+    pthread_mutex_lock(&amp;lk);
+    ready = <span class="tok-str">1</span>;
+    pthread_cond_signal(&amp;cv);
+    pthread_mutex_unlock(&amp;lk);
+}
+
+<span class="tok-cm">// Thread 2</span>
+<span class="tok-type">void</span> <span class="tok-fn">worker_main</span>() {
+    pthread_mutex_lock(&amp;lk);
+    <span class="tok-kw">while</span> (ready == <span class="tok-str">0</span>)
+        pthread_cond_wait(&amp;cv, &amp;lk);
+    pthread_mutex_unlock(&amp;lk);
+
+    status = worker-&gt;state;   <span class="tok-cm">// دلوقتي مضمون إن worker اتهيأ</span>
+}
+</code></pre>
+      <p>
+        لو الـ Thread 2 بدأ الأول، هيقف مستني على الـ <code class="inline">wait</code> لحد ما يوصله الـ signal.
+        ولو بدأ متأخر، هيلاقي <code class="inline">ready</code> خلاص = 1 فيكمل على طول من غير ما يستنى. الحالتين متغطيين.
+      </p>
+
+      <div class="box note">
+        <div class="box-title">ملحوظة مهمة</div>
+        <p style="margin:0">
+          حسب دراسة Lu وزمايلها، <strong>٩٧٪</strong> من الـ non-deadlock bugs اللي درسوها كانت من النوعين دول بس (atomicity أو order).
+          يعني لو انت كمبرمج بتركز على النمطين دول وانت بتراجع الكود، هتقدر تمسك أغلب المشاكل الشائعة.
+          طبعًا مش كل الـ bugs سهلة زي المثالين دول — بعضها محتاج إعادة تصميم أعمق لبنية البيانات نفسها.
+        </p>
+      </div>
+    </section>
+
+    <div class="divider">• • •</div>
+
+    <!-- ================= DEADLOCK ================= -->
+    <section id="deadlock">
+      <h2>٢. Deadlock Bugs</h2>
+      <p>
+        المشكلة الكلاسيكية اللي بتظهر في الأنظمة اللي فيها locking protocols معقدة. بتحصل لما thread ماسك lock (خليها L1)
+        وبينتظر lock تاني (L2)، وفي نفس الوقت الـ thread التاني ماسك L2 وبينتظر L1 يتفك. النتيجة: الاتنين واقفين لحد الأبد.
+      </p>
+
+      <div class="code-label">// كل thread بياخد اللوكات بترتيب عكسي عن التاني — احتمال deadlock حقيقي</div>
+      <pre><code><span class="tok-cm">// Thread 1</span>              <span class="tok-cm">// Thread 2</span>
+pthread_mutex_lock(&amp;L1);   pthread_mutex_lock(&amp;L2);
+pthread_mutex_lock(&amp;L2);   pthread_mutex_lock(&amp;L1);
+</code></pre>
+      <p>
+        الكود ده <em>مش هيعمل deadlock دايمًا</em> — بس فيه احتمال حقيقي: لو Thread 1 خد L1 وحصل context switch قبل ما ياخد L2،
+        وThread 2 خد L2 وحاول ياخد L1... كل واحد فيهم دلوقتي مستني قفل ماسكه التاني. مفيش حد هيكمل.
+      </p>
+
+      <div class="graph-wrap">
+        <svg width="420" height="230" viewBox="0 0 420 230" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+              <path d="M0,0 L0,6 L8,3 z" fill="#fb4934"/>
+            </marker>
+          </defs>
+          <rect x="20" y="20" width="130" height="50" rx="8" fill="#3c3836" stroke="#fb4934"/>
+          <text x="85" y="50" fill="#ebdbb2" font-size="15" text-anchor="middle" font-family="JetBrains Mono, monospace">Thread 1</text>
+
+          <rect x="270" y="20" width="130" height="50" rx="8" fill="#3c3836" stroke="#fabd2f"/>
+          <text x="335" y="50" fill="#ebdbb2" font-size="15" text-anchor="middle" font-family="JetBrains Mono, monospace">Thread 2</text>
+
+          <rect x="20" y="160" width="130" height="50" rx="8" fill="#32302f" stroke="#8ec07c"/>
+          <text x="85" y="190" fill="#ebdbb2" font-size="15" text-anchor="middle" font-family="JetBrains Mono, monospace">Lock L1</text>
+
+          <rect x="270" y="160" width="130" height="50" rx="8" fill="#32302f" stroke="#8ec07c"/>
+          <text x="335" y="190" fill="#ebdbb2" font-size="15" text-anchor="middle" font-family="JetBrains Mono, monospace">Lock L2</text>
+
+          <!-- Thread1 holds L1 -->
+          <line x1="85" y1="70" x2="85" y2="158" stroke="#8ec07c" stroke-width="2"/>
+          <text x="95" y="115" fill="#8ec07c" font-size="11" font-family="JetBrains Mono, monospace">holds</text>
+
+          <!-- Thread2 holds L2 -->
+          <line x1="335" y1="70" x2="335" y2="158" stroke="#8ec07c" stroke-width="2"/>
+          <text x="345" y="115" fill="#8ec07c" font-size="11" font-family="JetBrains Mono, monospace">holds</text>
+
+          <!-- Thread1 wants L2 -->
+          <path d="M150,45 C220,45 260,45 268,45" stroke="#fb4934" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+          <text x="175" y="35" fill="#fb4934" font-size="11" font-family="JetBrains Mono, monospace">wants</text>
+
+          <!-- Thread2 wants L1 -->
+          <path d="M270,190 C220,190 180,190 152,190 C130,190 110,150 90,72" stroke="#fb4934" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+          <text x="175" y="205" fill="#fb4934" font-size="11" font-family="JetBrains Mono, monospace">wants</text>
+        </svg>
+      </div>
+      <p style="text-align:center; color:var(--gray); font-size:14px; margin-top:-14px">
+        الـ cycle في الرسمة (Thread 1 → L2 → Thread 2 → L1 → Thread 1) هو بالظبط علامة الـ deadlock.
+      </p>
+
+      <h3 id="why-deadlock">ليه الـ Deadlocks بتحصل أصلًا؟</h3>
+      <p>
+        ممكن تفتكر إن حل زي "خلي الاتنين ياخدوا اللوكات بنفس الترتيب" هيحل المشكلة على طول — وده صح فعلاً في الأمثلة البسيطة.
+        بس في الواقع، فيه سببين رئيسيين بيخلوا المشكلة دي مستمرة:
+      </p>
+      <ol>
+        <li>
+          <strong>تعقيد الـ dependencies في الأنظمة الكبيرة:</strong> خد مثلاً الـ operating system —
+          الـ virtual memory subsystem ممكن يحتاج يوصل للـ file system عشان يجيب صفحة من الديسك،
+          وفي نفس الوقت الـ file system ممكن يحتاج صفحة memory جديدة عشان يقرا فيها البيانات، فيحتاج يتواصل مع virtual memory subsystem.
+          العلاقة الدائرية دي بين الأنظمة الفرعية بتخلي تصميم استراتيجية الـ locking حاجة محتاجة عناية شديدة.
+        </li>
+        <li>
+          <strong>طبيعة الـ encapsulation:</strong> إحنا كمبرمجين متعلمين نخبي تفاصيل التنفيذ عشان الكود يبقى سهل البناء والتعديل (modularity).
+          المشكلة إن المبدأ ده مش بيتماشى كويس مع الـ locking. مثال كلاسيكي: method في Java اسمها <code class="inline">Vector.addAll()</code>.
+          لو عندك <code class="inline">v1.addAll(v2)</code>، الـ method دي محتاجة تاخد lock للـ vector الأساسي (v1) وللـ vector التاني (v2)
+          عشان تضمن thread-safety. بتاخدهم بترتيب معين (مثلاً v1 الأول). لو thread تاني نادى في نفس اللحظة تقريبًا
+          <code class="inline">v2.addAll(v1)</code>، بقى عندك احتمال deadlock حقيقي — وده كله متخبي جوه implementation الـ method،
+          البرنامج اللي بيستخدمها مش شايف أي حاجة غلط في الكود بتاعه.
+        </li>
+      </ol>
+
+      <h3 id="conditions">الشروط الأربعة اللازمة عشان يحصل Deadlock</h3>
+      <p>لازم <strong>الأربع شروط دول كلهم يتحققوا مع بعض</strong> عشان يحصل deadlock. لو شرط واحد بس مش متحقق، الـ deadlock مستحيل يحصل — وده أساس كل استراتيجيات الحل اللي جاية.</p>
+
+      <div class="conditions-grid">
+        <div class="cond-card">
+          <div><span class="num">١</span><span class="title">Mutual Exclusion</span></div>
+          <p>الـ threads بتاخد ownership حصري (exclusive) على المورد — زي ما بيحصل لما thread ياخد lock.</p>
+        </div>
+        <div class="cond-card">
+          <div><span class="num">٢</span><span class="title">Hold-and-Wait</span></div>
+          <p>الـ thread فاضل ماسك موارد (locks) خدها فعلًا، وفي نفس الوقت بينتظر موارد إضافية (locks تانية).</p>
+        </div>
+        <div class="cond-card">
+          <div><span class="num">٣</span><span class="title">No Preemption</span></div>
+          <p>مفيش حد يقدر ياخد lock بالقوة من thread ماسكه — لازم هو نفسه يسيبه.</p>
+        </div>
+        <div class="cond-card">
+          <div><span class="num">٤</span><span class="title">Circular Wait</span></div>
+          <p>فيه سلسلة دائرية من الـ threads، كل واحد فيهم ماسك مورد الـ thread اللي جاي بعده في السلسلة بينتظره.</p>
+        </div>
+      </div>
+    </section>
+
+    <div class="divider">• • •</div>
+
+    <!-- ================= PREVENTION ================= -->
+    <section id="prevention">
+      <h2>٣. Prevention — منع الـ Deadlock</h2>
+      <p>
+        بما إن الأربع شروط لازم يتحققوا كلهم مع بعض، فكل استراتيجية منع بتحاول تكسر <em>شرط واحد بس</em> من الأربعة عشان تضمن استحالة الـ deadlock.
+      </p>
+
+      <h3 id="p-circular">كسر الـ Circular Wait</h3>
+      <p>
+        دي أعملي وأشيع تقنية بيستخدموها المبرمجين فعليًا. الفكرة: تفرض <strong>ترتيب ثابت (total ordering)</strong> لأخذ الـ locks.
+        مثلاً لو عندك L1 وL2 بس في النظام كله، اجعل كل الكود من غير استثناء ياخد L1 قبل L2 دايمًا. الترتيب الصارم ده بيمنع أي cycle، وبالتالي مفيش deadlock.
+      </p>
+      <p>
+        في الأنظمة الكبيرة والمعقدة، عدد الـ locks بيبقى أكبر بكتير، فعمل total ordering يبقى صعب (وأحيانًا مش لازم أصلاً).
+        الحل البديل: <strong>partial ordering</strong> — تحدد ترتيب معين بس بين مجموعات معينة من الـ locks بدل ما ترتبهم كلهم مع بعض.
+        مثال حقيقي جدًا: كود memory-mapping في kernel لينكس فيه تعليق في أول الملف بيوضح حوالي عشر مجموعات مختلفة من ترتيب أخذ الـ locks،
+        من مجموعات بسيطة لحد ترتيبات معقدة بتشمل أكتر من ٣-٤ locks مع بعض.
+      </p>
+
+      <div class="box tip">
+        <div class="box-title">حيلة عملية: رتّب حسب عنوان الذاكرة</div>
+        <p>
+          لو عندك function بتاخد اتنين lock كباراميترات، زي <code class="inline">do_something(lock_t *a, lock_t *b)</code>،
+          المشكلة إن thread ممكن ينادي <code class="inline">do_something(L1, L2)</code> وthread تاني ينادي <code class="inline">do_something(L2, L1)</code> —
+          فمهما كان الترتيب الداخلي جوه الـ function، دايمًا هيبقى فيه احتمال تعارض.
+        </p>
+        <p style="margin:0">
+          الحل الذكي: قارن <em>عنوان</em> الـ lock نفسه في الذاكرة (memory address)، وخد الأصغر عنوانًا أولاً دايمًا (أو الأكبر، المهم تكون ثابتة).
+          كده مهما كان ترتيب الباراميترات اللي دخلت بيه، الترتيب الفعلي لأخذ الـ locks هيفضل ثابت.
+        </p>
+      </div>
+
+      <h3 id="p-hold">كسر الـ Hold-and-Wait</h3>
+      <p>
+        الفكرة: تاخد <strong>كل</strong> الـ locks اللي محتاجها مرة واحدة، وبشكل atomic، من غير ما تسيب فرصة لأي context switch يحصل في النص.
+        طريقة شائعة لتنفيذ ده: تستخدم "super lock" (خليها اسمها <code class="inline">global_lock</code>) تاخده الأول قبل أي محاولة لأخذ أي مجموعة locks.
+      </p>
+
+      <div class="code-label">// أخذ كل الـ locks المطلوبة تحت حماية super lock واحد يمنع أي تداخل</div>
+      <pre><code>pthread_mutex_lock(&amp;global_lock);   <span class="tok-cm">// بداية التجميع</span>
+pthread_mutex_lock(&amp;L1);
+pthread_mutex_lock(&amp;L2);
+<span class="tok-cm">// ... باقي الشغل</span>
+pthread_mutex_unlock(&amp;global_lock); <span class="tok-cm">// النهاية</span>
+</code></pre>
+
+      <p>طالما كل thread بيلتزم إنه ياخد <code class="inline">global_lock</code> الأول قبل أي محاولة لأخذ locks تانية، حتى لو أخد بقية اللوكات بترتيب مختلف، مفيش مشكلة — لأنه أساسًا بيكون الوحيد الشغال في المنطقة دي.</p>
+      <p>المشكلة في الحل ده:</p>
+      <ul>
+        <li>الـ encapsulation بتقف ضدك تاني هنا: عشان تنادي أي routine، لازم تعرف مقدمًا بالظبط أنهي locks هتتاخد جواها — وده مش دايمًا واضح.</li>
+        <li>بيقلل الـ concurrency، لأنك بتاخد كل اللوكات بدري (مرة واحدة) بدل ما تاخدها وقت ما تحتاجها فعليًا.</li>
+      </ul>
+
+      <h3 id="p-preempt">كسر الـ No-Preemption</h3>
+      <p>
+        أغلب مكتبات الـ threading بتوفر واجهة أكتر مرونة اسمها <code class="inline">trylock</code>:
+        بدل ما تستخدم <code class="inline">lock()</code> العادية اللي بتوقف (block) الـ thread لحد ما تاخد الـ lock،
+        <code class="inline">trylock()</code> بترجع فورًا — لو نجحت تاخد الـ lock بترجع نجاح، ولو الـ lock مشغول بترجع خطأ على طول من غير انتظار.
+      </p>
+
+      <div class="code-label">// لو فشلنا ناخد L2، نسيب L1 ونحاول من الأول — بدل ما نفضل مستنيين ونعمل deadlock</div>
+      <pre><code>retry:
+pthread_mutex_lock(&amp;L1);
+<span class="tok-kw">if</span> (pthread_mutex_trylock(&amp;L2) != <span class="tok-str">0</span>) {
+    pthread_mutex_unlock(&amp;L1);
+    <span class="tok-kw">goto</span> retry;
+}
+</code></pre>
+      <p>
+        بالطريقة دي، حتى لو thread تاني بياخد نفس اللوكات بترتيب معكوس (L2 قبل L1)، البرنامج مش هيعمل deadlock —
+        لأن أي thread بيفشل في أخذ الـ lock التاني، بيسيب الأول ويحاول تاني بدل ما يفضل مستني لحد الأبد.
+      </p>
+
+      <div class="box note">
+        <div class="box-title">مشكلة جديدة: Livelock</div>
+        <p style="margin:0">
+          ممكن (مع إنه مش شائع) اتنين threads يفضلوا يحاولوا وبيفشلوا مع بعض بنفس النمط، تكرارًا وبلا نهاية —
+          مش deadlock (لأن الاتنين شغالين فعلًا)، بس مفيش تقدم حقيقي بيحصل. الحل الشائع: تضيف <strong>تأخير عشوائي (random delay)</strong>
+          قبل ما تعيد المحاولة، عشان تقلل احتمال التصادم المتكرر بين نفس الـ threads.
+        </p>
+      </div>
+
+      <p>
+        الحل ده كمان له عيبين: الأول، لو الـ lock الأول متخبي جوه routine تانية (encapsulation تاني)، الرجوع للـ retry
+        بيبقى أعقد في التنفيذ. والتاني: لو الكود خد موارد تانية غير اللوكات (زي allocate memory) في الطريق قبل ما يفشل،
+        لازم يفكها كلها بعناية قبل ما يرجع يحاول من الأول تاني — وإلا هيحصل memory leak أو حاجة زيها.
+      </p>
+      <p>
+        ملحوظة أخيرة: الحل ده في الحقيقة مش بيضيف "preemption" فعلي (يعني مفيش حد بياخد الـ lock بالقوة من حد تاني) —
+        هو بس بيدي الـ thread فرصة إنه "يسيب" ملكيته لنفسه بشكل لطيف (graceful) لو حس إنه هيتورط. برضه عمليًا الحل ده بيشتغل كويس جدًا.
+      </p>
+
+      <h3 id="p-mutex">إلغاء الـ Mutual Exclusion تمامًا</h3>
+      <p>
+        آخر استراتيجية، وهي الأصعب مفاهيميًا: بدل ما تحاول تدير الـ mutual exclusion بذكاء، تلغيها من أساسها.
+        Herlihy كان أول من طرح فكرة إنك تبني data structures من غير أي locks خالص — الأسلوب ده معروف بـ <strong>lock-free</strong>
+        (والمرتبط بيه <strong>wait-free</strong>)، باستخدام تعليمات هاردوير قوية زي <strong>compare-and-swap (CAS)</strong>.
+      </p>
+      <p>
+        الـ CAS تعليمة atomic بيوفرها الهاردوير: بتاخد عنوان، وقيمة متوقعة، وقيمة جديدة. لو القيمة الحالية في العنوان
+        بتطابق القيمة المتوقعة، بتغيرها للقيمة الجديدة وترجع نجاح؛ غير كده، ترجع فشل من غير ما تغير حاجة خالص — وكل ده بشكل atomic (خطوة واحدة مش قابلة للمقاطعة).
+      </p>
+
+      <div class="code-label">// compare-and-swap بشكل مبسط</div>
+      <pre><code><span class="tok-type">int</span> <span class="tok-fn">compare_and_swap</span>(<span class="tok-type">int</span> *addr, <span class="tok-type">int</span> expected, <span class="tok-type">int</span> new_val) {
+    <span class="tok-kw">if</span> (*addr == expected) {
+        *addr = new_val;
+        <span class="tok-kw">return</span> <span class="tok-str">1</span>; <span class="tok-cm">// نجح</span>
+    }
+    <span class="tok-kw">return</span> <span class="tok-str">0</span>; <span class="tok-cm">// فشل</span>
+}
+</code></pre>
+
+      <p>مثال بسيط: تعمل increment لقيمة بشكل atomic من غير أي lock:</p>
+      <div class="code-label">// نحاول نحدّث القيمة، ولو حد سبقنا وغيرها، نعيد المحاولة بالقيمة الجديدة</div>
+      <pre><code><span class="tok-type">void</span> <span class="tok-fn">atomic_add</span>(<span class="tok-type">int</span> *value, <span class="tok-type">int</span> amount) {
+    <span class="tok-type">int</span> old_val;
+    <span class="tok-kw">do</span> {
+        old_val = *value;
+    } <span class="tok-kw">while</span> (compare_and_swap(value, old_val, old_val + amount) == <span class="tok-str">0</span>);
+}
+</code></pre>
+      <p>
+        بدل ما تاخد lock، تعمل التعديل، وبعدين تفك الـ lock — هنا بتحاول تحدّث القيمة باستمرار جوه loop، وتستخدم الـ CAS
+        عشان تتأكد إن حد تاني ماغيرش القيمة من تحتك وانت شغال. مفيش lock خالص، وبالتالي مفيش deadlock ممكن يحصل
+        (رغم إن livelock لسه احتمال وارد نظريًا).
+      </p>
+
+      <p>مثال أعقد شوية: إضافة عنصر (node) في أول linked list (insert at head) بدون locks:</p>
+      <div class="code-label">// لسه نجهز الـ node، ونحاول نخلي head يشاور عليه — ولو حد سبقنا غيّر head، نعيد المحاولة</div>
+      <pre><code><span class="tok-type">void</span> <span class="tok-fn">list_insert</span>(<span class="tok-type">int</span> value) {
+    node_t *n = malloc(<span class="tok-kw">sizeof</span>(node_t));
+    n-&gt;value = value;
+    <span class="tok-kw">do</span> {
+        n-&gt;next = head;
+    } <span class="tok-kw">while</span> (compare_and_swap((<span class="tok-type">int</span>*)&amp;head, (<span class="tok-type">int</span>)n-&gt;next, (<span class="tok-type">int</span>)n) == <span class="tok-str">0</span>);
+}
+</code></pre>
+      <p>
+        الفكرة: نخلي الـ node الجديد يشاور على head الحالي، وبعدين نحاول بـ CAS نخلي head يشاور على node الجديد.
+        لو thread تاني كان أسرع وغيّر head من تحتنا، محاولتنا هتفشل، فنعيدها تاني بالقيمة الجديدة لـ head — وهكذا لحد ما تنجح.
+      </p>
+      <p>
+        طبعًا بناء list كامل تقدر تعمله insert وdelete وlookup بشكل lock-free بالكامل حاجة أعقد بكتير من مجرد insert بسيط —
+        ده مجال بحثي قائم بذاته (lock-free / wait-free data structures)، وصعوبته من أسباب إن استخدامه محدود في الواقع رغم فايدته النظرية.
+      </p>
+    </section>
+
+    <div class="divider">• • •</div>
+
+    <!-- ================= AVOIDANCE ================= -->
+    <section id="avoidance">
+      <h2>٤. Avoidance — تجنب الـ Deadlock عن طريق الـ Scheduling</h2>
+      <p>
+        بدل ما "تمنع" الـ deadlock بتغيير طريقة كتابة الكود، فيه أسلوب بديل: <strong>تتجنبه</strong> عن طريق الـ scheduling الذكي.
+        الفكرة تتطلب معرفة شاملة (global knowledge) مقدمًا بكل الـ locks اللي كل thread هياخدها خلال تنفيذه، وبعدين تجدول الـ threads
+        بطريقة تضمن إن الـ deadlock مستحيل يحصل.
+      </p>
+
+      <h4>مثال ١ — تعارض جزئي</h4>
+      <p>افترض عندك ٢ processors و٤ threads. T1 وT2 كل واحد بياخد L1 وL2. T3 باخد L2 بس. T4 مابياخدش أي lock:</p>
+      <div class="schedule">
+        <table>
+          <thead><tr><th></th><th>T1</th><th>T2</th><th>T3</th><th>T4</th></tr></thead>
+          <tbody>
+            <tr><td>L1</td><td>yes</td><td>yes</td><td>no</td><td>no</td></tr>
+            <tr><td>L2</td><td>yes</td><td>yes</td><td>yes</td><td>no</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>
+        الـ scheduler الذكي هنا يقدر يستنتج إنه طالما T1 وT2 محصلش يشتغلوا في نفس اللحظة، مفيش أي احتمال deadlock —
+        سواء T3 اشتغل مع T1 أو مع T2 أو حتى مع T4 مش هيسبب مشكلة، لأن T3 بياخد lock واحد بس أصلًا.
+      </p>
+      <div class="schedule" style="margin-top:18px">
+        <div class="cpu-row"><span class="cpu-label">CPU 1</span><div class="cpu-block blk-t1">T1</div><div class="cpu-block blk-t2">T2</div></div>
+        <div class="cpu-row"><span class="cpu-label">CPU 2</span><div class="cpu-block blk-t3">T3</div><div class="cpu-block blk-t4">T4</div></div>
+      </div>
+
+      <h4>مثال ٢ — تعارض كامل</h4>
+      <p>هنا T1 وT2 وT3 كلهم محتاجين L1 وL2 مع بعض:</p>
+      <div class="schedule">
+        <table>
+          <thead><tr><th></th><th>T1</th><th>T2</th><th>T3</th><th>T4</th></tr></thead>
+          <tbody>
+            <tr><td>L1</td><td>yes</td><td>yes</td><td>yes</td><td>no</td></tr>
+            <tr><td>L2</td><td>yes</td><td>yes</td><td>yes</td><td>no</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>الحل الآمن الوحيد هنا: تشغل T1 وT2 وT3 كلهم بالتسلسل على نفس الـ processor:</p>
+      <div class="schedule" style="margin-top:18px">
+        <div class="cpu-row"><span class="cpu-label">CPU 1</span><div class="cpu-block blk-t1">T1</div><div class="cpu-block blk-t2">T2</div><div class="cpu-block blk-t3">T3</div></div>
+        <div class="cpu-row"><span class="cpu-label">CPU 2</span><div class="cpu-block blk-t4">T4</div></div>
+      </div>
+      <p>
+        زي ما واضح، الـ static scheduling هنا محافظ (conservative) جدًا — T1 وT2 وT3 اتحطوا كلهم على نفس البروسيسور،
+        فالوقت الإجمالي لإنهاء الشغل بيطول بشكل واضح. كان ممكن نظريًا نشغلهم بالتوازي، بس الخوف من الـ deadlock بيمنعنا،
+        والتضحية هنا في الأداء (performance).
+      </p>
+
+      <div class="box tip">
+        <div class="box-title">مش كل حاجة لازم تتعمل بالكمال (Tom West's Law)</div>
+        <p style="margin:0">
+          مقولة مشهورة في هندسة الأنظمة: "مش كل حاجة تستاهل تتعمل تستاهل كمان تتعمل ١٠٠٪ صح". لو مشكلة معينة نادرة الحدوث
+          وتكلفتها لو حصلت بسيطة، مفيش داعي تصرف مجهود ضخم عشان تمنعها بالكامل. لكن لو كنت بتبني نظام حرج
+          (زي مركبة فضائية!) وتكلفة الخطأ كارثية، وقتها الحكاية تختلف تمامًا.
+        </p>
+      </div>
+
+      <p>
+        أشهر خوارزمية في المجال ده هي <strong>Banker's Algorithm</strong> بتاعة Dijkstra. المشكلة إن الأسلوب ده
+        مفيد بس في بيئات محدودة جدًا — زي embedded systems لما يكون عندك معرفة كاملة مقدمًا بكل الـ tasks والـ locks
+        اللي هيحتاجوها. وزي ما شفنا في المثال التاني، الأسلوب ده بيقلل الـ concurrency بشكل واضح.
+        عشان كده، الـ avoidance عن طريق الـ scheduling مش حل عام مستخدم على نطاق واسع في الواقع.
+      </p>
+    </section>
+
+    <div class="divider">• • •</div>
+
+    <!-- ================= DETECT ================= -->
+    <section id="detect">
+      <h2>٥. Detect and Recover — اكتشاف وعلاج الـ Deadlock</h2>
+      <p>
+        الاستراتيجية الأخيرة والأكتر واقعية في كتير من الأنظمة: تسيب الـ deadlock يحصل من وقت للتاني (نادرًا)،
+        وتاخد إجراء بعد ما تكتشفه، بدل ما تحاول تمنعه أو تتجنبه بالكامل من البداية.
+      </p>
+      <p>
+        فكر في الموضوع كده: لو نظام تشغيل بيهنج مرة كل سنة، غالبًا هتعمل restart وتكمل شغلك عادي.
+        لو الـ deadlocks نادرة فعلًا، الحل "الكسول" ده يبقى عملي جدًا في الواقع.
+      </p>
+      <p>
+        كتير من أنظمة الـ databases بتستخدم بالفعل تقنيات <strong>deadlock detection and recovery</strong>:
+        فيه "deadlock detector" بيشتغل بشكل دوري، بيبني <em>resource graph</em> (شبيه بالرسمة اللي شفناها فوق)
+        ويفحص وجود <em>cycles</em> فيه. لو لقى cycle، معناها فيه deadlock فعلي، والنظام محتاج يتخذ إجراء —
+        زي إعادة تشغيل بعض العمليات المتورطة. لو الإصلاح محتاج دقة أكبر في بنية البيانات، ممكن يستدعي الأمر تدخل بشري لإصلاح الحالة يدويًا.
+      </p>
+    </section>
+
+    <div class="divider">• • •</div>
+
+    <!-- ================= SUMMARY ================= -->
+    <section id="summary">
+      <h2>الخلاصة</h2>
+      <p>الشابتر غطى نوعين من الـ concurrency bugs:</p>
+      <ul>
+        <li>
+          <strong>Non-deadlock bugs:</strong> شائعة جدًا في الواقع (بالنسبة تفوق الديدلوك)، لكنها غالبًا أسهل في الإصلاح.
+          بتنقسم لـ <em>atomicity violations</em> (سلسلة تعليمات المفروض تتنفذ مع بعض ما اتنفذتش) و<em>order violations</em>
+          (ترتيب مطلوب بين عمليتين ماتفرضش وقت التشغيل).
+        </li>
+        <li>
+          <strong>Deadlock:</strong> مشكلة قديمة قد الـ concurrency نفسها، اتكتب فيها مئات الأبحاث.
+          أفضل حل عملي في الواقع هو الحرص والانضباط: تفرض ترتيب واضح لأخذ اللوكات من البداية (lock ordering)،
+          وده بيمنع المشكلة من أساسها في أغلب الحالات.
+        </li>
+      </ul>
+      <p>
+        الأساليب اللي بتلغي الحاجة للـ locks خالص (lock-free / wait-free) واعدة، وبدأت فعلًا تدخل مكتبات مستخدمة
+        على نطاق واسع (زي بعض أجزاء لينكس)، بس تعقيد بنائها بيحد من انتشارها العام. في الآخر، ممكن يكون
+        أفضل حل بعيد المدى هو تصميم <em>نماذج برمجة متوازية جديدة</em> أصلًا مالهاش علاقة باللوكات —
+        زي MapReduce من Google، اللي بتخلي المبرمج يوصف حسابات متوازية معينة من غير ما يحتاج يلمس lock واحد طول الوقت.
+        الـ locks بطبيعتها فيها مشاكل — يمكن أحسن استراتيجية إننا نتجنب استخدامها أصلًا إلا لو محتاجينها فعلًا.
+      </p>
+    </section>
+
+    <div class="divider">• • •</div>
+
+    <!-- ================= REFS ================= -->
+    <section id="refs">
+      <h2>المراجع الأصلية (زي ما وردت في الفصل)</h2>
+      <ul class="refs">
+        <li>Bernstein, Hadzilacos, Goodman — <em>Concurrency Control and Recovery in Database Systems</em> (1987) <span class="tag">[B+87]</span></li>
+        <li>Coffman, Elphick, Shoshani — <em>System Deadlocks</em>, ACM Computing Surveys (1971) — الورقة الكلاسيكية اللي حددت شروط الـ deadlock الأربعة <span class="tag">[C+71]</span></li>
+        <li>Dijkstra — <em>Een algorithme ter voorkoming van de dodelijke omarming</em> (1964) — أول من وصف مشكلة الـ deadlock كتابيًا، وسماها "the deadly embrace" <span class="tag">[D64]</span></li>
+        <li>Ghemawat, Dean — <em>MapReduce: Simplified Data Processing on Large Clusters</em>, OSDI (2004) <span class="tag">[GD02]</span></li>
+        <li>Harris — <em>A Pragmatic Implementation of Non-blocking Linked-lists</em>, DISC (2001) <span class="tag">[H01]</span></li>
+        <li>Herlihy — <em>Wait-free Synchronization</em>, ACM TOPLAS (1991) <span class="tag">[H91]</span></li>
+        <li>Herlihy — <em>A Methodology for Implementing Highly Concurrent Data Objects</em>, ACM TOPLAS (1993) <span class="tag">[H93]</span></li>
+        <li>Jula, Tralamazza, Zamfir, Candea — <em>Deadlock Immunity: Enabling Systems To Defend Against Deadlocks</em>, OSDI (2008) <span class="tag">[J+08]</span></li>
+        <li>Kidder — <em>Soul of a New Machine</em> (كتاب غير تقني، بيحكي قصة فريق هندسي أسطوري) <span class="tag">[K81]</span></li>
+        <li>Knapp — <em>Deadlock Detection in Distributed Databases</em>, ACM Computing Surveys (1987) <span class="tag">[K87]</span></li>
+        <li>Lu, Park, Seo, Zhou — <em>Learning from Mistakes — A Comprehensive Study on Real World Concurrency Bug Characteristics</em>, ASPLOS (2008) — الدراسة الأساسية اللي مبني عليها معظم الشابتر <span class="tag">[L+08]</span></li>
+        <li>Torvalds et al. — كود memory-mapping في kernel لينكس (filemap.c) <span class="tag">[T+94]</span></li>
+      </ul>
+    </section>
+
+    <footer>
+      شرح مبني على OSTEP — Chapter 32: Common Concurrency Problems (Arpaci-Dusseau) · ostep.org
+    </footer>
+  </main>
+</div>
+</body>
+</html>
